@@ -94,6 +94,11 @@ def find_duplicate_action(bindings: dict[str, str], token: str) -> str | None:
 
 
 def write_bindings(path: str, profile_name: str, bindings: dict[str, str]) -> None:
+    if os.path.isdir(path):
+        raise ValueError(
+            f"output path points to a directory, not a file: {path}"
+        )
+
     payload = {
         "profile_name": profile_name,
         "bindings": {token: action for action, token in bindings.items()},
@@ -133,6 +138,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         actions = load_actions(args.actions)
+        if os.path.isdir(args.out):
+            raise ValueError(f"--out must be a file path, not a directory: {args.out}")
     except ValueError as exc:
         parser.error(str(exc))
         return 2
@@ -201,6 +208,10 @@ def main(argv: list[str] | None = None) -> int:
                         if action_index < len(actions):
                             prompt_action(actions[action_index])
             write_bindings(args.out, args.profile_name, bindings)
+        except ValueError as exc:
+            print("")
+            print(f"Error: {exc}")
+            return 2
         except KeyboardInterrupt:
             print("")
             print("Wizard cancelled. No bindings were written.")

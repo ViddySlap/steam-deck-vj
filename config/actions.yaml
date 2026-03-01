@@ -22,12 +22,12 @@ actions:
   - L2_FULL
   - R2_SOFT
   - R2_FULL
+  - LEFT_STICK_CLICK
+  - RIGHT_STICK_CLICK
   - L3
   - R3
   - L4
   - R4
-  - L5
-  - R5
   - START
   - SELECT
   - L_PAD_UP

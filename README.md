@@ -14,3 +14,4 @@ Receiver docs: `docs/windows-receiver.md`
 Installer docs: `docs/windows-install.md`
 Packaging docs: `docs/windows-packaging.md`
 Release checklist: `docs/windows-release-checklist.md`
+GitHub release docs: `docs/github-release.md`

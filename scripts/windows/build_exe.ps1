@@ -31,6 +31,54 @@ if (-not (Test-Path $venvPath)) {
 
 $venvPython = Join-Path $venvPath "Scripts\python.exe"
 $specPath = Join-Path $RepoRoot "steamdeck-midi-receiver.spec"
+$versionPath = Join-Path $RepoRoot "VERSION"
+if (-not (Test-Path $versionPath)) {
+    throw "VERSION file not found at '$versionPath'."
+}
+$appVersion = (Get-Content $versionPath -Raw).Trim()
+if ([string]::IsNullOrWhiteSpace($appVersion)) {
+    throw "VERSION file at '$versionPath' is empty."
+}
+$versionParts = $appVersion.Split(".")
+while ($versionParts.Count -lt 4) {
+    $versionParts += "0"
+}
+$versionInfoPath = Join-Path $RepoRoot "build\windows-file-version.txt"
+$versionTuple = ($versionParts[0..3] | ForEach-Object { [int]$_ }) -join ", "
+$versionText = @"
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=($versionTuple),
+    prodvers=($versionTuple),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo(
+      [
+        StringTable(
+          u'040904B0',
+          [
+            StringStruct(u'CompanyName', u'ViddySlap'),
+            StringStruct(u'FileDescription', u'STEAMDECK MIDI Receiver'),
+            StringStruct(u'FileVersion', u'$appVersion'),
+            StringStruct(u'InternalName', u'STEAMDECK-MIDI-RECEIVER'),
+            StringStruct(u'OriginalFilename', u'STEAMDECK-MIDI-RECEIVER.exe'),
+            StringStruct(u'ProductName', u'STEAMDECK MIDI Receiver'),
+            StringStruct(u'ProductVersion', u'$appVersion')
+          ]
+        )
+      ]
+    ),
+    VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
+  ]
+)
+"@
+Set-Content -Path $versionInfoPath -Value $versionText -Encoding ASCII
 
 Write-Host "Installing build dependencies..."
 & $venvPython -m pip install --upgrade pip
@@ -44,8 +92,8 @@ if ($LASTEXITCODE -ne 0) {
 
 Push-Location $RepoRoot
 try {
-    Write-Host "Building executable..."
-    & $venvPython -m PyInstaller --clean --noconfirm $specPath
+Write-Host "Building executable..."
+    & $venvPython -m PyInstaller --clean --noconfirm --version-file $versionInfoPath $specPath
     if ($LASTEXITCODE -ne 0) {
         throw "PyInstaller build failed."
     }

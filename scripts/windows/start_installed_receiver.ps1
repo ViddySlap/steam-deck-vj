@@ -66,6 +66,14 @@ Write-Host ""
 
 Push-Location $InstallRoot
 try {
+    & $exePath --check-midi-port --midi-port ([string]$settings.midi_port)
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ""
+        Write-Host "Configured MIDI port check failed."
+        Write-Host "Install loopMIDI, create a DECK_IN port, then relaunch the receiver."
+        exit $LASTEXITCODE
+    }
+
     & $exePath @args
 } finally {
     Pop-Location

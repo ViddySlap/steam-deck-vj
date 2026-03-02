@@ -139,6 +139,21 @@ def open_midi_output(port_name: str | None, dry_run: bool) -> MidiOut:
     return MidoMidiOut(port_name)
 
 
+def get_output_port_names() -> list[str]:
+    try:
+        import mido
+    except ImportError as exc:
+        raise MidiError(
+            "mido is not installed; use --dry-run or install a MIDI backend"
+        ) from exc
+
+    return list_output_ports(mido.get_output_names())
+
+
+def resolve_available_output_port_name(port_name: str) -> str:
+    return resolve_output_port_name(port_name, get_output_port_names())
+
+
 def list_output_ports(names: Sequence[str]) -> list[str]:
     return list(names)
 

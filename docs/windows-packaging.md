@@ -15,6 +15,8 @@ The standalone receiver still expects:
 - a Windows MIDI map JSON file
 - runtime arguments, just like `py -m windows.win_recv`
 
+The installed launcher now does a preflight MIDI port check before starting the receiver.
+
 ## Prerequisites
 
 - Windows
@@ -34,6 +36,7 @@ The build script will:
 - install `requirements-build.txt`
 - run PyInstaller with `steamdeck-midi-receiver.spec`
 - write the output executable to `dist\STEAMDECK-MIDI-RECEIVER.exe`
+- stamp the EXE with Windows version metadata from the repo `VERSION` file
 
 ## Run The EXE
 
@@ -51,6 +54,8 @@ The executable uses the same CLI options as the Python module:
 - `--timeout`
 - `--dry-run`
 - `--verbose`
+- `--list-ports`
+- `--check-midi-port`
 
 ## Build The Installer EXE
 
@@ -71,6 +76,7 @@ The installer build will:
 - include default config files
 - include a launcher PowerShell script for the installed app
 - create `installer-output\STEAMDECK-MIDI-RECEIVER-Setup.exe`
+- stamp the setup EXE with installer version metadata from the same `VERSION` file
 
 ## What The Installer Produces
 

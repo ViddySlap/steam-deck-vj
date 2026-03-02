@@ -7,7 +7,13 @@ import logging
 import sys
 
 from windows.config import ConfigError, load_midi_map
-from windows.midi import MidiError, open_midi_output
+from windows.midi import (
+    MidiError,
+    format_output_port_list,
+    get_output_port_names,
+    open_midi_output,
+    resolve_available_output_port_name,
+)
 from windows.receiver import ActionReceiver, serve_forever
 
 
@@ -26,7 +32,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--map",
         dest="map_path",
-        required=True,
         help="path to windows_midi_map.json",
     )
     parser.add_argument(
@@ -37,6 +42,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--dry-run", action="store_true", help="log MIDI output only")
     parser.add_argument("--verbose", action="store_true", help="enable verbose logging")
+    parser.add_argument(
+        "--list-ports",
+        action="store_true",
+        help="list available MIDI output ports and exit",
+    )
+    parser.add_argument(
+        "--check-midi-port",
+        action="store_true",
+        help="validate the configured MIDI port and exit",
+    )
     return parser
 
 
@@ -58,6 +73,27 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     try:
+        if args.list_ports:
+            port_names = get_output_port_names()
+            if not port_names:
+                print("No MIDI output ports found.")
+                return 1
+            print("Available MIDI output ports:")
+            for index, port_name in enumerate(port_names):
+                print(f"- [{index}] {port_name}")
+            return 0
+
+        if args.check_midi_port:
+            resolved_port_name = resolve_available_output_port_name(args.midi_port)
+            print(
+                "MIDI output port is available:"
+                f" requested={args.midi_port} resolved={resolved_port_name}"
+            )
+            return 0
+
+        if not args.map_path:
+            raise ConfigError("--map is required unless --list-ports or --check-midi-port is used")
+
         listen_host, listen_port = parse_listen(args.listen)
         mappings = load_midi_map(args.map_path)
         midi_out = open_midi_output(args.midi_port, args.dry_run)

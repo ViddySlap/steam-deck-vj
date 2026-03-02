@@ -57,9 +57,6 @@ else
   git clone "${REPO_URL}" "${INSTALL_DIR}"
 fi
 
-chmod +x "${INSTALL_DIR}/scripts/deck/run_sender.sh"
-chmod +x "${INSTALL_DIR}/scripts/deck/run_learn_map.sh"
-
 if [[ ! -f "${INSTALL_DIR}/config/deck_runtime_settings.local.json" ]]; then
   cp \
     "${INSTALL_DIR}/config/deck_runtime_settings.example.json" \

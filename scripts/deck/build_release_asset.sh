@@ -8,16 +8,13 @@ BUNDLE_DIR="${OUTPUT_DIR}/steamdeck-midi-installer"
 SOURCE_PATH="${REPO_ROOT}/STEAMDECK-MIDI-SENDER-SETUP.sh"
 TARGET_PATH="${BUNDLE_DIR}/STEAMDECK-MIDI-SENDER-SETUP.sh"
 LAUNCHER_PATH="${BUNDLE_DIR}/STEAMDECK-MIDI-INSTALL.desktop"
-ICON_SOURCE_PATH="${REPO_ROOT}/assets/deck/install-wizard-icon.png"
-ICON_TARGET_PATH="${BUNDLE_DIR}/install-wizard-icon.png"
-ARCHIVE_PATH="${OUTPUT_DIR}/STEAMDECK-MIDI-INSTALLER.tar.gz"
+ARCHIVE_PATH="${OUTPUT_DIR}/STEAMDECK-MIDI-SENDER-SETUP.tar.gz"
 
 mkdir -p "${OUTPUT_DIR}"
 rm -rf "${BUNDLE_DIR}"
 mkdir -p "${BUNDLE_DIR}"
 cp "${SOURCE_PATH}" "${TARGET_PATH}"
 chmod +x "${TARGET_PATH}"
-cp "${ICON_SOURCE_PATH}" "${ICON_TARGET_PATH}"
 
 cat >"${LAUNCHER_PATH}" <<'EOF'
 [Desktop Entry]
@@ -28,7 +25,7 @@ Comment=Install or update Steam Deck MIDI
 Exec=sh -c 'SCRIPT_DIR="$(dirname "$1")"; chmod +x "$SCRIPT_DIR/STEAMDECK-MIDI-SENDER-SETUP.sh"; exec "$SCRIPT_DIR/STEAMDECK-MIDI-SENDER-SETUP.sh"' sh %k
 Terminal=true
 Categories=Utility;
-Icon=install-wizard-icon.png
+Icon=system-software-install
 StartupNotify=true
 EOF
 

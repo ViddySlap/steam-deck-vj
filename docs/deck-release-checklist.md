@@ -19,8 +19,7 @@ Verify:
 
 - `release-output/steamdeck-midi-installer/STEAMDECK-MIDI-INSTALL.desktop`
 - `release-output/steamdeck-midi-installer/STEAMDECK-MIDI-SENDER-SETUP.sh`
-- `release-output/steamdeck-midi-installer/install-wizard-icon.png`
-- `release-output/STEAMDECK-MIDI-INSTALLER.tar.gz`
+- `release-output/STEAMDECK-MIDI-SENDER-SETUP.tar.gz`
 
 ## What The Installer Does
 
@@ -36,7 +35,7 @@ The Deck release asset:
 
 On the target Steam Deck in Desktop Mode:
 
-1. Download `STEAMDECK-MIDI-INSTALLER.tar.gz`.
+1. Download `STEAMDECK-MIDI-SENDER-SETUP.tar.gz`.
 2. Extract it in Desktop Mode.
 3. Open the extracted `steamdeck-midi-installer` folder.
 4. Double-click `STEAMDECK-MIDI-INSTALL.desktop`.

@@ -59,7 +59,7 @@ if (-not (Test-Path $localSettingsPath)) {
 
 $launcherPath = Join-Path $RepoRoot "scripts\windows\start_receiver.ps1"
 $desktopPath = [Environment]::GetFolderPath("Desktop")
-$shortcutPath = Join-Path $desktopPath "Steam Deck VJ Receiver.lnk"
+$shortcutPath = Join-Path $desktopPath "STEAMDECK MIDI Receiver.lnk"
 $workingDirectory = $RepoRoot
 $arguments = "-ExecutionPolicy Bypass -NoLogo -NoExit -File `"$launcherPath`" -RepoRoot `"$RepoRoot`""
 
@@ -69,7 +69,7 @@ $shortcut.TargetPath = "powershell.exe"
 $shortcut.Arguments = $arguments
 $shortcut.WorkingDirectory = $workingDirectory
 $shortcut.IconLocation = "$env:SystemRoot\System32\shell32.dll,70"
-$shortcut.Description = "Start the Steam Deck VJ Windows receiver"
+$shortcut.Description = "Start the STEAMDECK MIDI Windows receiver"
 $shortcut.Save()
 
 Write-Host ""

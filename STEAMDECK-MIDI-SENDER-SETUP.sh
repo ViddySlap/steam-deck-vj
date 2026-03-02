@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_URL="https://github.com/ViddySlap/steam-deck-vj.git"
-INSTALL_DIR="${HOME}/steam-deck-vj"
+REPO_URL="https://github.com/ViddySlap/steam-deck-midi.git"
+INSTALL_DIR="${HOME}/steam-deck-midi"
 APPLICATIONS_DIR="${HOME}/.local/share/applications"
 DESKTOP_DIR="${HOME}/Desktop"
 LEARN_DESKTOP="${APPLICATIONS_DIR}/learn-steam-input-map.desktop"

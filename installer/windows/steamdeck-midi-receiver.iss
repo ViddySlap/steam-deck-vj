@@ -4,7 +4,7 @@
 #define AppVersion "0.1.0"
 #endif
 #define AppPublisher "ViddySlap"
-#define AppURL "https://github.com/ViddySlap/steam-deck-vj"
+#define AppURL "https://github.com/ViddySlap/steam-deck-midi"
 
 [Setup]
 AppId={{7A0E5D8E-8F37-4FD0-A998-E5CE0D95D9CC}

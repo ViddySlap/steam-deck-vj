@@ -25,7 +25,7 @@ If you already cloned the repo, from File Explorer or PowerShell in the repo roo
 .\install-windows.cmd
 ```
 
-If you want a single bootstrap entrypoint that clones or updates the repo into `%USERPROFILE%\steam-deck-vj` and then installs it, run:
+If you want a single bootstrap entrypoint that clones or updates the repo into `%USERPROFILE%\steam-deck-midi` and then installs it, run:
 
 ```powershell
 .\bootstrap-windows.cmd
@@ -34,7 +34,7 @@ If you want a single bootstrap entrypoint that clones or updates the repo into `
 You can also pass a target install directory:
 
 ```powershell
-.\bootstrap-windows.cmd C:\VJ\steam-deck-vj
+.\bootstrap-windows.cmd C:\VJ\steam-deck-midi
 ```
 
 This installer will:
@@ -42,7 +42,7 @@ This installer will:
 - create `.venv`
 - install `requirements.txt`
 - create `config/windows_receiver_settings.local.json` if it does not already exist
-- create a desktop shortcut named `Steam Deck VJ Receiver`
+- create a desktop shortcut named `STEAMDECK MIDI Receiver`
 
 ## Configure
 
@@ -66,7 +66,7 @@ The receiver now accepts an exact MIDI port name or a unique prefix. That means 
 
 Double-click the desktop shortcut:
 
-- `Steam Deck VJ Receiver`
+- `STEAMDECK MIDI Receiver`
 
 It opens PowerShell and runs the receiver with your local settings.
 

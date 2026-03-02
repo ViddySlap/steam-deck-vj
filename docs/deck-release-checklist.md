@@ -25,7 +25,7 @@ Verify:
 
 The Deck release asset:
 
-- clones or updates the repo into `~/steam-deck-vj`
+- clones or updates the repo into `~/steam-deck-midi`
 - creates `config/deck_runtime_settings.local.json` if missing
 - creates desktop launchers for:
   - `Learn Steam Input Map`
@@ -45,6 +45,6 @@ On the target Steam Deck in Desktop Mode:
 
 ## Upgrade Behavior
 
-- rerunning the installer updates the repo checkout in `~/steam-deck-vj`
+- rerunning the installer updates the repo checkout in `~/steam-deck-midi`
 - rerunning the installer keeps `config/deck_runtime_settings.local.json`
 - sender target presets remain stored in that local settings file

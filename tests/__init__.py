@@ -1,1 +1,1 @@
-"""Test package for steam-deck-vj."""
+"""Test package for steam-deck-midi."""

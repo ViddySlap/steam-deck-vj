@@ -56,7 +56,7 @@ On GitHub:
 
 - open the repo Releases page
 - create a new release from tag `v<version>`
-- title it `STEAMDECK MIDI Receiver v<version>`
+- title it `STEAMDECK MIDI TX/RX v<version>`
 - attach `installer-output\STEAMDECK-MIDI-RECEIVER-Setup.exe`
 - attach `release-output\STEAMDECK-MIDI-SENDER-SETUP.tar.gz`
 

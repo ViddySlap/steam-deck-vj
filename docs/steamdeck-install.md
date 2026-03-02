@@ -18,7 +18,7 @@ steamdeck-midi-installer/STEAMDECK-MIDI-INSTALL.desktop
 
 It will:
 
-- clone or update the repo into `~/steam-deck-vj`
+- clone or update the repo into `~/steam-deck-midi`
 - create `config/deck_runtime_settings.local.json` if missing
 - create two desktop launchers:
   - `Learn Steam Input Map`

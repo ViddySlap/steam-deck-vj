@@ -1,6 +1,6 @@
-# steam-deck-vj
+# steam-deck-midi
 
-Steam Deck to Windows MIDI bridge for Resolume-oriented VJ control.
+STEAMDECK MIDI TX/RX is a Steam Deck to Windows MIDI bridge for Resolume-oriented control.
 
 Current status:
 

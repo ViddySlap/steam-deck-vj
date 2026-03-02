@@ -68,7 +68,7 @@ VSVersionInfo(
             StringStruct(u'FileVersion', u'$appVersion'),
             StringStruct(u'InternalName', u'STEAMDECK-MIDI-RECEIVER'),
             StringStruct(u'OriginalFilename', u'STEAMDECK-MIDI-RECEIVER.exe'),
-            StringStruct(u'ProductName', u'STEAMDECK MIDI Receiver'),
+            StringStruct(u'ProductName', u'STEAMDECK MIDI TX/RX'),
             StringStruct(u'ProductVersion', u'$appVersion')
           ]
         )

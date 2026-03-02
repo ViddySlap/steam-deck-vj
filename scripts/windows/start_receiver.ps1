@@ -46,7 +46,7 @@ if ($settings.verbose) {
     $args += "--verbose"
 }
 
-Write-Host "Steam Deck VJ receiver"
+Write-Host "STEAMDECK MIDI receiver"
 Write-Host "Repo:     $RepoRoot"
 Write-Host "Settings: $settingsPath"
 Write-Host "Map:      $mapPath"

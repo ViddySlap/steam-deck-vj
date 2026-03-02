@@ -5,12 +5,13 @@ from __future__ import annotations
 import logging
 import socket
 import time
+from collections import deque
 from dataclasses import dataclass
 from typing import Callable
 
 from protocol.messages import ActionEvent, ProtocolError, parse_action_event
 from windows.config import ControlChangeMapping, MidiMapping, NoteMapping
-from windows.midi import MidiOut
+from windows.midi import MidiError, MidiOut
 
 
 LOGGER = logging.getLogger(__name__)
@@ -31,14 +32,25 @@ class ActionReceiver:
         mappings: dict[str, MidiMapping],
         *,
         timeout_seconds: float = 2.0,
+        dedupe_window_seconds: float = 0.015,
+        rate_limit_window_seconds: float = 1.0,
+        rate_limit_max_events: int = 200,
+        rate_limit_cooldown_seconds: float = 1.0,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._midi_out = midi_out
         self._mappings = mappings
         self._timeout_seconds = timeout_seconds
+        self._dedupe_window_seconds = dedupe_window_seconds
+        self._rate_limit_window_seconds = rate_limit_window_seconds
+        self._rate_limit_max_events = rate_limit_max_events
+        self._rate_limit_cooldown_seconds = rate_limit_cooldown_seconds
         self._clock = clock
         self._sender_states: dict[tuple[str, int], SenderState] = {}
         self._active_actions: dict[str, MidiMapping] = {}
+        self._recent_events: dict[tuple[str, str], float] = {}
+        self._event_times: deque[float] = deque()
+        self._loop_guard_until = 0.0
 
     def handle_datagram(
         self, payload: bytes, addr: tuple[str, int], now: float | None = None
@@ -64,7 +76,14 @@ class ActionReceiver:
 
         sender.last_seq = event.seq
         sender.last_seen = timestamp
-        return self._dispatch_event(event)
+        if not self._allow_event(event, timestamp):
+            return False
+        try:
+            return self._dispatch_event(event)
+        except MidiError as exc:
+            LOGGER.error("MIDI output error while handling %s: %s", event.action, exc)
+            self._active_actions.pop(event.action, None)
+            return False
 
     def check_timeouts(self, now: float | None = None) -> bool:
         timestamp = self._clock() if now is None else now
@@ -85,9 +104,58 @@ class ActionReceiver:
 
     def release_all(self) -> None:
         for action, mapping in list(self._active_actions.items()):
-            self._release_mapping(action, mapping)
+            try:
+                self._release_mapping(action, mapping)
+            except MidiError as exc:
+                LOGGER.error("MIDI output error while releasing %s: %s", action, exc)
         self._active_actions.clear()
-        self._midi_out.panic()
+        try:
+            self._midi_out.panic()
+        except MidiError as exc:
+            LOGGER.error("MIDI output error during panic reset: %s", exc)
+
+    def _allow_event(self, event: ActionEvent, timestamp: float) -> bool:
+        if timestamp < self._loop_guard_until:
+            LOGGER.warning(
+                "dropping event during loop-guard cooldown: action=%s state=%s seq=%s",
+                event.action,
+                event.state,
+                event.seq,
+            )
+            return False
+
+        event_key = (event.action, event.state)
+        previous = self._recent_events.get(event_key)
+        if previous is not None and (timestamp - previous) < self._dedupe_window_seconds:
+            LOGGER.debug(
+                "dropped duplicate event inside %.1fms window: action=%s state=%s seq=%s",
+                self._dedupe_window_seconds * 1000,
+                event.action,
+                event.state,
+                event.seq,
+            )
+            self._recent_events[event_key] = timestamp
+            return False
+        self._recent_events[event_key] = timestamp
+
+        self._event_times.append(timestamp)
+        cutoff = timestamp - self._rate_limit_window_seconds
+        while self._event_times and self._event_times[0] < cutoff:
+            self._event_times.popleft()
+
+        if len(self._event_times) <= self._rate_limit_max_events:
+            return True
+
+        self._loop_guard_until = timestamp + self._rate_limit_cooldown_seconds
+        self._event_times.clear()
+        LOGGER.error(
+            "loop guard tripped: received %s events in %.2fs; muting MIDI for %.2fs",
+            self._rate_limit_max_events + 1,
+            self._rate_limit_window_seconds,
+            self._rate_limit_cooldown_seconds,
+        )
+        self.release_all()
+        return False
 
     def _dispatch_event(self, event: ActionEvent) -> bool:
         mapping = self._mappings.get(event.action)

@@ -63,11 +63,22 @@ python3 -m protocol.send_test --action BTN_A --state tap --target 127.0.0.1:4512
 For real Windows MIDI output, install a `mido`-compatible backend on Windows and run:
 
 ```bash
-python -m windows.win_recv --map config/windows_midi_map.json --midi-port "SteamDeck VJ"
+py -m pip install -r requirements.txt
+py -m windows.list_midi_ports
+py -m windows.win_recv --map config/windows_midi_map.json --midi-port "DECK_IN" --verbose
 ```
+
+The Windows receiver opens only a MIDI output port. It does not subscribe to MIDI input.
+Use separate loopMIDI ports so Resolume input and output cannot feed each other:
+
+- `DECK_IN`: bridge output -> Resolume MIDI input
+- `DECK_OUT`: Resolume MIDI output -> optional future feedback receiver, or leave disabled
+
+Do not enable Resolume MIDI output on `DECK_IN`.
 
 ## Limitations
 
 - WSL cannot fully validate Windows MIDI port behavior.
 - Sequence handling currently assumes monotonically increasing integer counters.
-- Deck sender and Learn Wizard are not implemented yet.
+- A receiver-side loop guard drops ultra-fast duplicate events and temporarily mutes output if the incoming event rate spikes abnormally.
+- Real MIDI output must be validated on Windows proper with loopMIDI or another visible output port.

@@ -20,7 +20,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--midi-port",
-        help="Windows MIDI output port name; required unless --dry-run is used",
+        default="DECK_IN",
+        help='Windows MIDI output port name (default: "DECK_IN")',
     )
     parser.add_argument(
         "--map",
@@ -63,6 +64,12 @@ def main(argv: list[str] | None = None) -> int:
     except (argparse.ArgumentTypeError, ConfigError, MidiError) as exc:
         parser.error(str(exc))
         return 2
+
+    logging.info(
+        "selected MIDI output port: name=%s index=%s",
+        midi_out.port_name,
+        midi_out.port_index if midi_out.port_index is not None else "n/a",
+    )
 
     receiver = ActionReceiver(midi_out, mappings, timeout_seconds=args.timeout)
     try:

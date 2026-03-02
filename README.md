@@ -7,5 +7,8 @@ Current status:
 - Git repo initialized and connected to GitHub
 - initial project scaffold created
 - first Windows receiver slice implemented
+- Deck Learn Wizard and Deck sender are working on Steam Deck
+- Windows MIDI v1 path standardized on `mido` + `python-rtmidi`
 
 Receiver docs: `docs/windows-receiver.md`
+Installer docs: `docs/windows-install.md`

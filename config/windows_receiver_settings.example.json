@@ -1,0 +1,7 @@
+{
+  "listen": "0.0.0.0:45123",
+  "midi_port": "DECK_IN",
+  "map_path": "config/windows_midi_map.json",
+  "timeout": 2.0,
+  "verbose": true
+}

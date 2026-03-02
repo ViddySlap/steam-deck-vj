@@ -1,3 +1,220 @@
 {
-  "mappings": {}
+  "mappings": {
+    "BTN_A": {
+      "type": "note",
+      "channel": 0,
+      "note": 36,
+      "velocity": 127
+    },
+    "BTN_B": {
+      "type": "note",
+      "channel": 0,
+      "note": 37,
+      "velocity": 127
+    },
+    "BTN_X": {
+      "type": "note",
+      "channel": 0,
+      "note": 38,
+      "velocity": 127
+    },
+    "BTN_Y": {
+      "type": "note",
+      "channel": 0,
+      "note": 39,
+      "velocity": 127
+    },
+    "DPAD_UP": {
+      "type": "note",
+      "channel": 0,
+      "note": 40,
+      "velocity": 127
+    },
+    "DPAD_DOWN": {
+      "type": "note",
+      "channel": 0,
+      "note": 41,
+      "velocity": 127
+    },
+    "DPAD_LEFT": {
+      "type": "note",
+      "channel": 0,
+      "note": 42,
+      "velocity": 127
+    },
+    "DPAD_RIGHT": {
+      "type": "note",
+      "channel": 0,
+      "note": 43,
+      "velocity": 127
+    },
+    "L_STICK_UP": {
+      "type": "note",
+      "channel": 0,
+      "note": 44,
+      "velocity": 127
+    },
+    "L_STICK_DOWN": {
+      "type": "note",
+      "channel": 0,
+      "note": 45,
+      "velocity": 127
+    },
+    "L_STICK_LEFT": {
+      "type": "note",
+      "channel": 0,
+      "note": 46,
+      "velocity": 127
+    },
+    "L_STICK_RIGHT": {
+      "type": "note",
+      "channel": 0,
+      "note": 47,
+      "velocity": 127
+    },
+    "R_STICK_UP": {
+      "type": "note",
+      "channel": 0,
+      "note": 48,
+      "velocity": 127
+    },
+    "R_STICK_DOWN": {
+      "type": "note",
+      "channel": 0,
+      "note": 49,
+      "velocity": 127
+    },
+    "R_STICK_LEFT": {
+      "type": "note",
+      "channel": 0,
+      "note": 50,
+      "velocity": 127
+    },
+    "R_STICK_RIGHT": {
+      "type": "note",
+      "channel": 0,
+      "note": 51,
+      "velocity": 127
+    },
+    "L1": {
+      "type": "note",
+      "channel": 0,
+      "note": 52,
+      "velocity": 127
+    },
+    "R1": {
+      "type": "note",
+      "channel": 0,
+      "note": 53,
+      "velocity": 127
+    },
+    "L2_SOFT": {
+      "type": "note",
+      "channel": 0,
+      "note": 54,
+      "velocity": 127
+    },
+    "L2_FULL": {
+      "type": "note",
+      "channel": 0,
+      "note": 55,
+      "velocity": 127
+    },
+    "R2_SOFT": {
+      "type": "note",
+      "channel": 0,
+      "note": 56,
+      "velocity": 127
+    },
+    "R2_FULL": {
+      "type": "note",
+      "channel": 0,
+      "note": 57,
+      "velocity": 127
+    },
+    "LEFT_STICK_CLICK": {
+      "type": "note",
+      "channel": 0,
+      "note": 58,
+      "velocity": 127
+    },
+    "RIGHT_STICK_CLICK": {
+      "type": "note",
+      "channel": 0,
+      "note": 59,
+      "velocity": 127
+    },
+    "L3": {
+      "type": "note",
+      "channel": 0,
+      "note": 60,
+      "velocity": 127
+    },
+    "L4": {
+      "type": "note",
+      "channel": 0,
+      "note": 61,
+      "velocity": 127
+    },
+    "R3": {
+      "type": "note",
+      "channel": 0,
+      "note": 62,
+      "velocity": 127
+    },
+    "R4": {
+      "type": "note",
+      "channel": 0,
+      "note": 63,
+      "velocity": 127
+    },
+    "START": {
+      "type": "note",
+      "channel": 0,
+      "note": 64,
+      "velocity": 127
+    },
+    "SELECT": {
+      "type": "note",
+      "channel": 0,
+      "note": 65,
+      "velocity": 127
+    },
+    "L_PAD_UP": {
+      "type": "note",
+      "channel": 0,
+      "note": 66,
+      "velocity": 127
+    },
+    "L_PAD_DOWN": {
+      "type": "note",
+      "channel": 0,
+      "note": 67,
+      "velocity": 127
+    },
+    "L_PAD_LEFT": {
+      "type": "note",
+      "channel": 0,
+      "note": 68,
+      "velocity": 127
+    },
+    "L_PAD_RIGHT": {
+      "type": "note",
+      "channel": 0,
+      "note": 69,
+      "velocity": 127
+    },
+    "GYRO_FORWARD": {
+      "type": "note",
+      "channel": 0,
+      "note": 70,
+      "velocity": 127
+    },
+    "GYRO_BACKWARD": {
+      "type": "note",
+      "channel": 0,
+      "note": 71,
+      "velocity": 127
+    }
+  }
 }

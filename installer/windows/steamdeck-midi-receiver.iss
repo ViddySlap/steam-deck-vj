@@ -35,6 +35,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 [Files]
 Source: "..\..\dist\STEAMDECK-MIDI-RECEIVER.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\assets\windows\receiver.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\config\windows_midi_map.json"; DestDir: "{app}\config"; Flags: ignoreversion
 Source: "..\..\config\windows_midi_map.json"; DestDir: "{app}\config"; DestName: "windows_midi_map.local.json"; Flags: onlyifdoesntexist
 Source: "..\..\config\windows_receiver_settings.example.json"; DestDir: "{app}\config"; Flags: ignoreversion
@@ -42,8 +43,8 @@ Source: "..\..\config\windows_receiver_settings.example.json"; DestDir: "{app}\c
 Source: "..\..\scripts\windows\start_installed_receiver.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion
 
 [Icons]
-Name: "{autodesktop}\STEAMDECK MIDI Receiver"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoLogo -NoExit -File ""{app}\scripts\start_installed_receiver.ps1"" -InstallRoot ""{app}"""; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExeName}"
-Name: "{group}\STEAMDECK MIDI Receiver"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoLogo -NoExit -File ""{app}\scripts\start_installed_receiver.ps1"" -InstallRoot ""{app}"""; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExeName}"
+Name: "{autodesktop}\STEAMDECK MIDI Receiver"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoLogo -NoExit -File ""{app}\scripts\start_installed_receiver.ps1"" -InstallRoot ""{app}"""; WorkingDir: "{app}"; IconFilename: "{app}\receiver.ico"
+Name: "{group}\STEAMDECK MIDI Receiver"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoLogo -NoExit -File ""{app}\scripts\start_installed_receiver.ps1"" -InstallRoot ""{app}"""; WorkingDir: "{app}"; IconFilename: "{app}\receiver.ico"
 
 [Run]
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoLogo -NoExit -File ""{app}\scripts\start_installed_receiver.ps1"" -InstallRoot ""{app}"""; Description: "Launch STEAMDECK MIDI Receiver"; Flags: nowait postinstall skipifsilent

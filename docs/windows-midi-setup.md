@@ -22,16 +22,13 @@ Or use the repo installer:
 
 ## 2. Create a Virtual MIDI Port
 
-Install and open `loopMIDI`, then create two ports named:
+Install and open `loopMIDI`, then create a port named:
 
 ```text
 DECK_IN
-DECK_OUT
 ```
 
 `DECK_IN` is the control path from the bridge into Resolume.
-`DECK_OUT` is reserved for Resolume MIDI output or future feedback work.
-Do not use the same virtual port for both directions.
 
 ## 3. Confirm the Port Is Visible to Python
 
@@ -46,7 +43,6 @@ Expected result:
 ```text
 Available MIDI output ports:
 - [0] DECK_IN
-- [1] DECK_OUT
 ```
 
 ## 4. Start the Receiver With Real MIDI Output
@@ -68,9 +64,9 @@ py -m windows.win_recv --map config/windows_midi_map.json --verbose
 In Resolume MIDI preferences:
 
 - Enable MIDI input on `DECK_IN`
-- Disable MIDI output, or send MIDI output only to `DECK_OUT`
+- Disable MIDI output on this port
 
-Never enable input and output on the same loopMIDI port.
+Do not enable Resolume MIDI output on `DECK_IN`.
 
 ## Notes
 

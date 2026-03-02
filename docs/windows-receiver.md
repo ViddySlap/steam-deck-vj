@@ -69,12 +69,7 @@ py -m windows.win_recv --map config/windows_midi_map.json --midi-port "DECK_IN" 
 ```
 
 The Windows receiver opens only a MIDI output port. It does not subscribe to MIDI input.
-Use separate loopMIDI ports so Resolume input and output cannot feed each other:
-
-- `DECK_IN`: bridge output -> Resolume MIDI input
-- `DECK_OUT`: Resolume MIDI output -> optional future feedback receiver, or leave disabled
-
-Do not enable Resolume MIDI output on `DECK_IN`.
+Use `DECK_IN` for bridge output into Resolume, and leave Resolume MIDI output on that port disabled.
 
 ## Limitations
 

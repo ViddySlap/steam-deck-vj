@@ -73,5 +73,4 @@ It opens PowerShell and runs the receiver with your local settings.
 ## Notes
 
 - Resolume MIDI input should point at `DECK_IN`
-- Resolume MIDI output should be disabled or sent only to `DECK_OUT`
-- Do not use the same loopMIDI port for both input and output
+- Resolume MIDI output on `DECK_IN` should stay disabled

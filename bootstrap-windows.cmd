@@ -2,6 +2,7 @@
 setlocal
 set "INSTALL_DIR=%USERPROFILE%\steam-deck-vj"
 if not "%~1"=="" set "INSTALL_DIR=%~1"
+for %%I in ("%INSTALL_DIR%") do set "INSTALL_DIR=%%~fI"
 
 powershell.exe -ExecutionPolicy Bypass -NoLogo -Command ^
   "$ErrorActionPreference = 'Stop';" ^

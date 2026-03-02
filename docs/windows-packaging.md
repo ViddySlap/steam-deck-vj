@@ -75,7 +75,7 @@ The installer build will:
 - package the receiver EXE
 - include default config files
 - include a launcher PowerShell script for the installed app
-- create `installer-output\STEAMDECK-MIDI-RECEIVER-Setup.exe`
+- create `installer-output\STEAMDECK-MIDI-RECEIVER-Setup-<version>.exe`
 - stamp the setup EXE with installer version metadata from the same `VERSION` file
 
 ## What The Installer Produces

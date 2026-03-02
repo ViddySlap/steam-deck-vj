@@ -55,7 +55,7 @@ try {
 }
 
 $outputDir = Join-Path $RepoRoot "installer-output"
-$setupExe = Join-Path $outputDir "STEAMDECK-MIDI-RECEIVER-Setup.exe"
+$setupExe = Join-Path $outputDir ("STEAMDECK-MIDI-RECEIVER-Setup-{0}.exe" -f $appVersion)
 
 Write-Host ""
 Write-Host "Installer build complete."

@@ -18,7 +18,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\build_installer.ps1 -
 Verify:
 
 - `dist\STEAMDECK-MIDI-RECEIVER.exe`
-- `installer-output\STEAMDECK-MIDI-RECEIVER-Setup.exe`
+- `installer-output\STEAMDECK-MIDI-RECEIVER-Setup-<version>.exe`
 
 From the repo root on Linux or Steam Deck:
 
@@ -57,7 +57,7 @@ On GitHub:
 - open the repo Releases page
 - create a new release from tag `v<version>`
 - title it `STEAMDECK MIDI TX/RX v<version>`
-- attach `installer-output\STEAMDECK-MIDI-RECEIVER-Setup.exe`
+- attach `installer-output\STEAMDECK-MIDI-RECEIVER-Setup-<version>.exe`
 - attach `release-output\STEAMDECK-MIDI-SENDER-SETUP.tar.gz`
 
 ## 6. Release Notes

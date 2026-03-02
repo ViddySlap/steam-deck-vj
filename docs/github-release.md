@@ -1,6 +1,6 @@
 # GitHub Release
 
-Use this flow after building a Windows release on a Windows machine.
+Use this flow after preparing release artifacts for Windows and Steam Deck.
 
 ## 1. Confirm Version
 
@@ -19,6 +19,16 @@ Verify:
 
 - `dist\STEAMDECK-MIDI-RECEIVER.exe`
 - `installer-output\STEAMDECK-MIDI-RECEIVER-Setup.exe`
+
+From the repo root on Linux or Steam Deck:
+
+```bash
+bash ./scripts/deck/build_release_asset.sh
+```
+
+Verify:
+
+- `release-output/STEAMDECK-MIDI-SENDER-SETUP.sh`
 
 ## 3. Commit The Version Bump
 
@@ -48,6 +58,7 @@ On GitHub:
 - create a new release from tag `v<version>`
 - title it `STEAMDECK MIDI Receiver v<version>`
 - attach `installer-output\STEAMDECK-MIDI-RECEIVER-Setup.exe`
+- attach `release-output\STEAMDECK-MIDI-SENDER-SETUP.sh`
 
 ## 6. Release Notes
 
@@ -56,4 +67,5 @@ Keep release notes short and practical:
 - what changed
 - whether the installer format changed
 - whether users need to recreate `DECK_IN`
+- any Steam Deck installer/update notes
 - any manual upgrade notes

@@ -16,3 +16,4 @@ Packaging docs: `docs/windows-packaging.md`
 Release checklist: `docs/windows-release-checklist.md`
 GitHub release docs: `docs/github-release.md`
 Steam Deck install docs: `docs/steamdeck-install.md`
+Deck release checklist: `docs/deck-release-checklist.md`

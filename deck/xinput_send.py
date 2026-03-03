@@ -6,6 +6,7 @@ import argparse
 import json
 import re
 import selectors
+import shutil
 import socket
 import subprocess
 import sys
@@ -242,10 +243,13 @@ def run_sender(
     resolved_profile_name = profile_name or loaded_profile_name
     seq = 1
     held_keys: set[str] = set()
+    xinput_command = ["xinput", "test-xi2", "--root"]
+    if shutil.which("stdbuf") is not None:
+        xinput_command = ["stdbuf", "-oL", "-eL", *xinput_command]
 
     try:
         process = subprocess.Popen(
-            ["xinput", "test-xi2", "--root"],
+            xinput_command,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,

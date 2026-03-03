@@ -190,7 +190,7 @@ def main(argv: list[str] | None = None) -> int:
                             bindings, candidate.token
                         )
                         print(
-                            f"Latest candidate for {actions[action_index]}: keycode {candidate.token}"
+                            f"Latest candidate for {actions[action_index]}: keycode {candidate.token} press Enter to commit"
                         )
                         if duplicate_action is not None:
                             print(

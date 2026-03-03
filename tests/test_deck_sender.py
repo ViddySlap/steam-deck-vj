@@ -7,6 +7,7 @@ from pathlib import Path
 
 from deck.xinput_send import (
     Xi2KeyEvent,
+    flush_block,
     load_bindings,
     parse_xi2_event_block,
     should_emit_event,
@@ -141,6 +142,46 @@ class ShouldEmitEventTests(unittest.TestCase):
             )
         )
         self.assertEqual(held_keys, {"68"})
+
+
+class FlushBlockTests(unittest.TestCase):
+    def test_flushes_bound_press(self) -> None:
+        parsed, action = flush_block(
+            [
+                "EVENT type 2 (KeyPress)",
+                "    device: 5 (5)",
+                "    time: 3096762",
+                "    detail: 67",
+                "    flags: ",
+            ],
+            {"67": "BTN_A"},
+            set(),
+        )
+
+        self.assertEqual(
+            parsed, Xi2KeyEvent(keycode="67", state="down", is_repeat=False)
+        )
+        self.assertEqual(action, "BTN_A")
+
+    def test_flushes_release_without_needing_trailing_blank_separator(self) -> None:
+        held_keys = {"67"}
+        parsed, action = flush_block(
+            [
+                "EVENT type 3 (KeyRelease)",
+                "    device: 5 (5)",
+                "    time: 3096878",
+                "    detail: 67",
+                "    flags: ",
+            ],
+            {"67": "BTN_A"},
+            held_keys,
+        )
+
+        self.assertEqual(
+            parsed, Xi2KeyEvent(keycode="67", state="up", is_repeat=False)
+        )
+        self.assertEqual(action, "BTN_A")
+        self.assertEqual(held_keys, set())
 
 
 class SharedProtocolEncodingTests(unittest.TestCase):

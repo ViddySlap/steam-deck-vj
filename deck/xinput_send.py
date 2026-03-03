@@ -142,6 +142,25 @@ def should_emit_event(event: Xi2KeyEvent, held_keys: set[str]) -> bool:
     return True
 
 
+def flush_block(
+    block: list[str],
+    bindings: dict[str, str],
+    held_keys: set[str],
+) -> tuple[Xi2KeyEvent | None, str | None]:
+    parsed = parse_xi2_event_block(block)
+    if parsed is None:
+        return None, None
+
+    action = bindings.get(parsed.keycode)
+    if action is None:
+        return None, None
+
+    if not should_emit_event(parsed, held_keys):
+        return None, None
+
+    return parsed, action
+
+
 def send_action(
     sock: socket.socket,
     target: tuple[str, int],
@@ -203,22 +222,41 @@ def run_sender(
                 block: list[str] = []
                 for raw_line in process.stdout:
                     line = raw_line.rstrip("\n")
+                    if line.startswith("EVENT type ") and block:
+                        parsed, action = flush_block(block, bindings, held_keys)
+                        block = []
+                        if parsed is not None and action is not None:
+                            send_action(
+                                sock,
+                                resolved_target,
+                                action=action,
+                                state=parsed.state,
+                                seq=seq,
+                                profile_name=resolved_profile_name,
+                                profile_hash=profile_hash,
+                            )
+                            seq += 1
+
                     if line.strip():
                         block.append(line)
                         continue
 
-                    parsed = parse_xi2_event_block(block)
+                    parsed, action = flush_block(block, bindings, held_keys)
                     block = []
-                    if parsed is None:
-                        continue
+                    if parsed is not None and action is not None:
+                        send_action(
+                            sock,
+                            resolved_target,
+                            action=action,
+                            state=parsed.state,
+                            seq=seq,
+                            profile_name=resolved_profile_name,
+                            profile_hash=profile_hash,
+                        )
+                        seq += 1
 
-                    action = bindings.get(parsed.keycode)
-                    if action is None:
-                        continue
-
-                    if not should_emit_event(parsed, held_keys):
-                        continue
-
+                parsed, action = flush_block(block, bindings, held_keys)
+                if parsed is not None and action is not None:
                     send_action(
                         sock,
                         resolved_target,
@@ -228,7 +266,6 @@ def run_sender(
                         profile_name=resolved_profile_name,
                         profile_hash=profile_hash,
                     )
-                    seq += 1
             except KeyboardInterrupt:
                 print("stopping sender")
             finally:

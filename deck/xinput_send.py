@@ -172,6 +172,21 @@ def flush_block(
     return parsed, action
 
 
+def next_select_timeout(
+    *,
+    held_keys: set[str],
+    block: list[str],
+    next_heartbeat_at: float,
+    now: float,
+) -> float | None:
+    if block:
+        # Finish the current XI2 event block before considering heartbeat traffic.
+        return None
+    if not held_keys:
+        return None
+    return max(0.0, next_heartbeat_at - now)
+
+
 def send_action(
     sock: socket.socket,
     target: tuple[str, int],
@@ -252,7 +267,12 @@ def run_sender(
                 next_heartbeat_at = time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
                 while True:
                     now = time.monotonic()
-                    timeout = max(0.0, next_heartbeat_at - now) if held_keys else None
+                    timeout = next_select_timeout(
+                        held_keys=held_keys,
+                        block=block,
+                        next_heartbeat_at=next_heartbeat_at,
+                        now=now,
+                    )
                     events = selector.select(timeout)
                     if not events:
                         send_heartbeat(

@@ -10,6 +10,7 @@ from deck.xinput_send import (
     flush_block,
     is_complete_xi2_event_block,
     load_bindings,
+    next_select_timeout,
     parse_xi2_event_block,
     should_emit_event,
 )
@@ -217,6 +218,39 @@ class Xi2EventCompletionTests(unittest.TestCase):
                     "    flags: ",
                     "    root: 988.00/155.00",
                 ]
+            )
+        )
+
+
+class NextSelectTimeoutTests(unittest.TestCase):
+    def test_waits_for_current_block_before_heartbeat(self) -> None:
+        self.assertIsNone(
+            next_select_timeout(
+                held_keys={"67"},
+                block=["EVENT type 3 (KeyRelease)"],
+                next_heartbeat_at=10.0,
+                now=9.9,
+            )
+        )
+
+    def test_uses_heartbeat_deadline_when_idle_and_holding(self) -> None:
+        self.assertEqual(
+            next_select_timeout(
+                held_keys={"67"},
+                block=[],
+                next_heartbeat_at=10.0,
+                now=9.25,
+            ),
+            0.75,
+        )
+
+    def test_blocks_indefinitely_when_no_keys_are_held(self) -> None:
+        self.assertIsNone(
+            next_select_timeout(
+                held_keys=set(),
+                block=[],
+                next_heartbeat_at=10.0,
+                now=9.25,
             )
         )
 

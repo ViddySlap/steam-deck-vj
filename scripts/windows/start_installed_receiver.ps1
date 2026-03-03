@@ -5,6 +5,47 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Update-InstalledMidiMap {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$InstallRoot
+    )
+
+    $defaultMapPath = Join-Path $InstallRoot "config\windows_midi_map.json"
+    $localMapPath = Join-Path $InstallRoot "config\windows_midi_map.local.json"
+
+    if (-not (Test-Path $defaultMapPath) -or -not (Test-Path $localMapPath)) {
+        return
+    }
+
+    $defaultMap = Get-Content $defaultMapPath -Raw | ConvertFrom-Json
+    $localMap = Get-Content $localMapPath -Raw | ConvertFrom-Json
+
+    if (-not $defaultMap.PSObject.Properties.Match("mappings")) {
+        throw "Default MIDI map is invalid at '$defaultMapPath'."
+    }
+    if (-not $localMap.PSObject.Properties.Match("mappings")) {
+        throw "Local MIDI map is invalid at '$localMapPath'."
+    }
+
+    $updated = $false
+    $localActions = @($localMap.mappings.PSObject.Properties.Name)
+    foreach ($entry in $defaultMap.mappings.PSObject.Properties) {
+        if ($entry.Name -notin $localActions) {
+            Add-Member -InputObject $localMap.mappings -MemberType NoteProperty -Name $entry.Name -Value $entry.Value
+            $updated = $true
+        }
+    }
+
+    if (-not $updated) {
+        return
+    }
+
+    $json = $localMap | ConvertTo-Json -Depth 10
+    Set-Content -Path $localMapPath -Value $json -Encoding UTF8
+    Write-Host "Updated local MIDI map with new default actions."
+}
+
 if ([string]::IsNullOrWhiteSpace($InstallRoot)) {
     $InstallRoot = Split-Path -Parent $PSScriptRoot
 } else {
@@ -25,6 +66,7 @@ if (-not (Test-Path $settingsPath)) {
 }
 
 $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json
+Update-InstalledMidiMap -InstallRoot $InstallRoot
 $mapPath = Join-Path $InstallRoot $settings.map_path
 if (
     $settings.map_path -eq "config/windows_midi_map.json" -and

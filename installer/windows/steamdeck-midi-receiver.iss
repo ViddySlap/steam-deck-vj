@@ -33,6 +33,9 @@ DisableProgramGroupPage=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 
+[Dirs]
+Name: "{app}\config"; Permissions: users-modify
+
 [Files]
 Source: "..\..\dist\STEAMDECK-MIDI-RECEIVER.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\assets\windows\receiver.ico"; DestDir: "{app}"; Flags: ignoreversion

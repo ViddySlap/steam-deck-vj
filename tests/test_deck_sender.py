@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from deck.xinput_send import (
+    consume_warmup_event,
     Xi2KeyEvent,
     flush_block,
     is_complete_xi2_event_block,
@@ -224,6 +225,33 @@ class NextSelectTimeoutTests(unittest.TestCase):
                 now=9.25,
             )
         )
+
+
+class ConsumeWarmupEventTests(unittest.TestCase):
+    def test_consumes_first_complete_press_release_cycle(self) -> None:
+        held_keys: set[str] = set()
+        ready, warmup_keycode = consume_warmup_event(
+            Xi2KeyEvent(keycode="67", state="down"), held_keys, None
+        )
+        self.assertFalse(ready)
+        self.assertEqual(warmup_keycode, "67")
+        self.assertEqual(held_keys, {"67"})
+
+        ready, warmup_keycode = consume_warmup_event(
+            Xi2KeyEvent(keycode="67", state="up"), held_keys, warmup_keycode
+        )
+        self.assertTrue(ready)
+        self.assertIsNone(warmup_keycode)
+        self.assertEqual(held_keys, set())
+
+    def test_ignores_duplicate_down_during_warmup(self) -> None:
+        held_keys = {"67"}
+        ready, warmup_keycode = consume_warmup_event(
+            Xi2KeyEvent(keycode="67", state="down"), held_keys, "67"
+        )
+        self.assertFalse(ready)
+        self.assertEqual(warmup_keycode, "67")
+        self.assertEqual(held_keys, {"67"})
 
 
 class SharedProtocolEncodingTests(unittest.TestCase):

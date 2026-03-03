@@ -165,6 +165,23 @@ def flush_block(
     return parsed, action
 
 
+def consume_warmup_event(
+    event: Xi2KeyEvent,
+    held_keys: set[str],
+    warmup_keycode: str | None,
+) -> tuple[bool, str | None]:
+    if event.state == "down":
+        if event.keycode in held_keys:
+            return False, warmup_keycode
+        held_keys.add(event.keycode)
+        return False, event.keycode
+
+    if event.keycode not in held_keys:
+        return False, warmup_keycode
+    held_keys.remove(event.keycode)
+    return event.keycode == warmup_keycode, None
+
+
 def next_select_timeout(
     *,
     held_keys: set[str],
@@ -217,6 +234,45 @@ def send_heartbeat(
     sock.sendto(payload, target)
 
 
+def read_next_line(
+    selector: selectors.BaseSelector,
+    stream,
+    *,
+    held_keys: set[str],
+    block: list[str],
+    next_heartbeat_at: float,
+    sock: socket.socket,
+    target: tuple[str, int],
+    seq: int,
+    profile_name: str | None,
+    profile_hash: str | None,
+) -> tuple[str | None, int, float]:
+    while True:
+        now = time.monotonic()
+        timeout = next_select_timeout(
+            held_keys=held_keys,
+            block=block,
+            next_heartbeat_at=next_heartbeat_at,
+            now=now,
+        )
+        events = selector.select(timeout)
+        if events:
+            raw_line = stream.readline()
+            if raw_line == "":
+                return None, seq, next_heartbeat_at
+            return raw_line.rstrip("\r\n"), seq, next_heartbeat_at
+
+        send_heartbeat(
+            sock,
+            target,
+            seq=seq,
+            profile_name=profile_name,
+            profile_hash=profile_hash,
+        )
+        seq += 1
+        next_heartbeat_at = time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
+
+
 def run_sender(
     *,
     device_id: str,
@@ -266,31 +322,82 @@ def run_sender(
                 selector.register(process.stdout, selectors.EVENT_READ)
                 block: list[str] = []
                 next_heartbeat_at = time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
+                print("click any gamepad button to continue")
+                warmup_keycode: str | None = None
                 while True:
-                    now = time.monotonic()
-                    timeout = next_select_timeout(
+                    line, seq, next_heartbeat_at = read_next_line(
+                        selector,
+                        process.stdout,
                         held_keys=held_keys,
                         block=block,
                         next_heartbeat_at=next_heartbeat_at,
-                        now=now,
+                        sock=sock,
+                        target=resolved_target,
+                        seq=seq,
+                        profile_name=resolved_profile_name,
+                        profile_hash=profile_hash,
                     )
-                    events = selector.select(timeout)
-                    if not events:
-                        send_heartbeat(
-                            sock,
-                            resolved_target,
-                            seq=seq,
-                            profile_name=resolved_profile_name,
-                            profile_hash=profile_hash,
-                        )
-                        seq += 1
-                        next_heartbeat_at = time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
+                    if line is None:
+                        break
+                    if line.startswith("EVENT type ") and block:
+                        parsed = parse_xi2_event_block(block)
+                        block = []
+                        if parsed is not None:
+                            ready, warmup_keycode = consume_warmup_event(
+                                parsed, held_keys, warmup_keycode
+                            )
+                            if ready:
+                                print("sender ready")
+                                next_heartbeat_at = (
+                                    time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
+                                )
+                                break
+
+                    if line.strip():
+                        block.append(line)
+                        if is_complete_xi2_event_block(block):
+                            parsed = parse_xi2_event_block(block)
+                            block = []
+                            if parsed is not None:
+                                ready, warmup_keycode = consume_warmup_event(
+                                    parsed, held_keys, warmup_keycode
+                                )
+                                if ready:
+                                    print("sender ready")
+                                    next_heartbeat_at = (
+                                        time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
+                                    )
+                                    break
                         continue
 
-                    raw_line = process.stdout.readline()
-                    if raw_line == "":
+                    parsed = parse_xi2_event_block(block)
+                    block = []
+                    if parsed is not None:
+                        ready, warmup_keycode = consume_warmup_event(
+                            parsed, held_keys, warmup_keycode
+                        )
+                        if ready:
+                            print("sender ready")
+                            next_heartbeat_at = (
+                                time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
+                            )
+                            break
+
+                while True:
+                    line, seq, next_heartbeat_at = read_next_line(
+                        selector,
+                        process.stdout,
+                        held_keys=held_keys,
+                        block=block,
+                        next_heartbeat_at=next_heartbeat_at,
+                        sock=sock,
+                        target=resolved_target,
+                        seq=seq,
+                        profile_name=resolved_profile_name,
+                        profile_hash=profile_hash,
+                    )
+                    if line is None:
                         break
-                    line = raw_line.rstrip("\r\n")
                     if line.startswith("EVENT type ") and block:
                         parsed, action = flush_block(block, bindings, held_keys)
                         block = []

@@ -17,6 +17,7 @@ from protocol.messages import encode_action_event
 EVENT_HEADER_RE = re.compile(r"^EVENT type \d+ \((KeyPress|KeyRelease)\)$")
 DETAIL_RE = re.compile(r"^\s*detail:\s+(\d+)$")
 FLAGS_RE = re.compile(r"^\s*flags:\s*(.*)$")
+WINDOWS_RE = re.compile(r"^\s*windows:\s+")
 
 
 @dataclass(frozen=True)
@@ -129,6 +130,13 @@ def parse_xi2_event_block(block: list[str]) -> Xi2KeyEvent | None:
     )
 
 
+def is_complete_xi2_event_block(block: list[str]) -> bool:
+    parsed = parse_xi2_event_block(block)
+    if parsed is None:
+        return False
+    return any(WINDOWS_RE.match(line) for line in block[1:])
+
+
 def should_emit_event(event: Xi2KeyEvent, held_keys: set[str]) -> bool:
     if event.state == "down":
         if event.is_repeat or event.keycode in held_keys:
@@ -239,6 +247,20 @@ def run_sender(
 
                     if line.strip():
                         block.append(line)
+                        if is_complete_xi2_event_block(block):
+                            parsed, action = flush_block(block, bindings, held_keys)
+                            block = []
+                            if parsed is not None and action is not None:
+                                send_action(
+                                    sock,
+                                    resolved_target,
+                                    action=action,
+                                    state=parsed.state,
+                                    seq=seq,
+                                    profile_name=resolved_profile_name,
+                                    profile_hash=profile_hash,
+                                )
+                                seq += 1
                         continue
 
                     parsed, action = flush_block(block, bindings, held_keys)

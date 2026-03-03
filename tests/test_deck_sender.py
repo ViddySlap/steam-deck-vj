@@ -8,6 +8,7 @@ from pathlib import Path
 from deck.xinput_send import (
     Xi2KeyEvent,
     flush_block,
+    is_complete_xi2_event_block,
     load_bindings,
     parse_xi2_event_block,
     should_emit_event,
@@ -182,6 +183,42 @@ class FlushBlockTests(unittest.TestCase):
         )
         self.assertEqual(action, "BTN_A")
         self.assertEqual(held_keys, set())
+
+
+class Xi2EventCompletionTests(unittest.TestCase):
+    def test_detects_complete_keypress_block_at_windows_line(self) -> None:
+        self.assertTrue(
+            is_complete_xi2_event_block(
+                [
+                    "EVENT type 2 (KeyPress)",
+                    "    device: 5 (5)",
+                    "    time: 3096762",
+                    "    detail: 67",
+                    "    flags: ",
+                    "    root: 988.00/155.00",
+                    "    event: 988.00/155.00",
+                    "    buttons:",
+                    "    modifiers: locked 0 latched 0 base 0 effective: 0",
+                    "    group: locked 0 latched 0 base 0 effective: 0",
+                    "    valuators:",
+                    "    windows: root 0x3b8 event 0x3b8 child 0x144b1af",
+                ]
+            )
+        )
+
+    def test_incomplete_keyrelease_block_is_not_complete_before_windows_line(self) -> None:
+        self.assertFalse(
+            is_complete_xi2_event_block(
+                [
+                    "EVENT type 3 (KeyRelease)",
+                    "    device: 5 (5)",
+                    "    time: 3096878",
+                    "    detail: 67",
+                    "    flags: ",
+                    "    root: 988.00/155.00",
+                ]
+            )
+        )
 
 
 class SharedProtocolEncodingTests(unittest.TestCase):

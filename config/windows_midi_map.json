@@ -6,394 +6,370 @@
       "note": 36,
       "velocity": 127
     },
-    "BTN_B": {
+    "BTN_A_LAYER_2": {
       "type": "note",
       "channel": 0,
       "note": 37,
       "velocity": 127
     },
-    "BTN_X": {
+    "BTN_B": {
       "type": "note",
       "channel": 0,
       "note": 38,
       "velocity": 127
     },
-    "BTN_Y": {
+    "BTN_B_LAYER_2": {
       "type": "note",
       "channel": 0,
       "note": 39,
       "velocity": 127
     },
-    "DPAD_UP": {
+    "BTN_X": {
       "type": "note",
       "channel": 0,
       "note": 40,
       "velocity": 127
     },
-    "DPAD_DOWN": {
+    "BTN_X_LAYER_2": {
       "type": "note",
       "channel": 0,
       "note": 41,
       "velocity": 127
     },
-    "DPAD_LEFT": {
+    "BTN_Y": {
       "type": "note",
       "channel": 0,
       "note": 42,
       "velocity": 127
     },
-    "DPAD_RIGHT": {
+    "BTN_Y_LAYER_2": {
       "type": "note",
       "channel": 0,
       "note": 43,
       "velocity": 127
     },
-    "DPAD_UP_LONG_PRESS": {
+    "DPAD_UP": {
       "type": "note",
       "channel": 0,
       "note": 44,
       "velocity": 127
     },
-    "DPAD_DOWN_LONG_PRESS": {
+    "DPAD_DOWN": {
       "type": "note",
       "channel": 0,
       "note": 45,
       "velocity": 127
     },
-    "DPAD_LEFT_LONG_PRESS": {
+    "DPAD_LEFT": {
       "type": "note",
       "channel": 0,
       "note": 46,
       "velocity": 127
     },
-    "DPAD_RIGHT_LONG_PRESS": {
+    "DPAD_RIGHT": {
       "type": "note",
       "channel": 0,
       "note": 47,
       "velocity": 127
     },
-    "L_STICK_UP": {
+    "DPAD_UP_LONG_PRESS": {
       "type": "note",
       "channel": 0,
       "note": 48,
       "velocity": 127
     },
-    "L_STICK_DOWN": {
+    "DPAD_DOWN_LONG_PRESS": {
       "type": "note",
       "channel": 0,
       "note": 49,
       "velocity": 127
     },
-    "L_STICK_LEFT": {
+    "DPAD_LEFT_LONG_PRESS": {
       "type": "note",
       "channel": 0,
       "note": 50,
       "velocity": 127
     },
-    "L_STICK_RIGHT": {
+    "DPAD_RIGHT_LONG_PRESS": {
       "type": "note",
       "channel": 0,
       "note": 51,
       "velocity": 127
     },
-    "R_STICK_UP": {
+    "L_STICK_UP": {
       "type": "note",
       "channel": 0,
       "note": 52,
       "velocity": 127
     },
-    "R_STICK_DOWN": {
+    "L_STICK_DOWN": {
       "type": "note",
       "channel": 0,
       "note": 53,
       "velocity": 127
     },
-    "R_STICK_LEFT": {
+    "L_STICK_LEFT": {
       "type": "note",
       "channel": 0,
       "note": 54,
       "velocity": 127
     },
-    "R_STICK_RIGHT": {
+    "L_STICK_RIGHT": {
       "type": "note",
       "channel": 0,
       "note": 55,
       "velocity": 127
     },
-    "L1": {
+    "R_STICK_UP": {
       "type": "note",
       "channel": 0,
       "note": 56,
       "velocity": 127
     },
-    "R1": {
+    "R_STICK_DOWN": {
       "type": "note",
       "channel": 0,
       "note": 57,
       "velocity": 127
     },
-    "L2_SOFT": {
+    "R_STICK_LEFT": {
       "type": "note",
       "channel": 0,
       "note": 58,
       "velocity": 127
     },
-    "L2_FULL": {
+    "R_STICK_RIGHT": {
       "type": "note",
       "channel": 0,
       "note": 59,
       "velocity": 127
     },
-    "R2_SOFT": {
+    "L1": {
       "type": "note",
       "channel": 0,
       "note": 60,
       "velocity": 127
     },
-    "R2_FULL": {
+    "L1_LAYER_2": {
       "type": "note",
       "channel": 0,
       "note": 61,
       "velocity": 127
     },
-    "LEFT_STICK_CLICK": {
+    "R1": {
       "type": "note",
       "channel": 0,
       "note": 62,
       "velocity": 127
     },
-    "RIGHT_STICK_CLICK": {
+    "R1_LAYER_2": {
       "type": "note",
       "channel": 0,
       "note": 63,
       "velocity": 127
     },
-    "L3": {
+    "L2_SOFT": {
       "type": "note",
       "channel": 0,
       "note": 64,
       "velocity": 127
     },
-    "L4": {
+    "L2_SOFT_LAYER_2": {
       "type": "note",
       "channel": 0,
       "note": 65,
       "velocity": 127
     },
-    "R3": {
+    "L2_FULL": {
       "type": "note",
       "channel": 0,
       "note": 66,
       "velocity": 127
     },
-    "R4": {
+    "L2_FULL_LAYER_2": {
       "type": "note",
       "channel": 0,
       "note": 67,
       "velocity": 127
     },
-    "START": {
+    "R2_SOFT": {
       "type": "note",
       "channel": 0,
       "note": 68,
       "velocity": 127
     },
-    "SELECT": {
+    "R2_SOFT_LAYER_2": {
       "type": "note",
       "channel": 0,
       "note": 69,
       "velocity": 127
     },
-    "L_PAD_UP": {
+    "R2_FULL": {
       "type": "note",
       "channel": 0,
       "note": 70,
       "velocity": 127
     },
-    "L_PAD_DOWN": {
+    "R2_FULL_LAYER_2": {
       "type": "note",
       "channel": 0,
       "note": 71,
       "velocity": 127
     },
-    "L_PAD_LEFT": {
+    "LEFT_STICK_CLICK_L3": {
       "type": "note",
       "channel": 0,
       "note": 72,
       "velocity": 127
     },
-    "L_PAD_RIGHT": {
+    "RIGHT_STICK_CLICK_R3": {
       "type": "note",
       "channel": 0,
       "note": 73,
       "velocity": 127
     },
-    "L_PAD_UP_LONG_PRESS": {
+    "L4": {
       "type": "note",
       "channel": 0,
       "note": 74,
       "velocity": 127
     },
-    "L_PAD_DOWN_LONG_PRESS": {
+    "L5": {
       "type": "note",
       "channel": 0,
       "note": 75,
       "velocity": 127
     },
-    "L_PAD_LEFT_LONG_PRESS": {
+    "R4": {
       "type": "note",
       "channel": 0,
       "note": 76,
       "velocity": 127
     },
-    "L_PAD_RIGHT_LONG_PRESS": {
+    "R5": {
       "type": "note",
       "channel": 0,
       "note": 77,
       "velocity": 127
     },
-    "R_PAD_UP": {
+    "START": {
       "type": "note",
       "channel": 0,
       "note": 78,
       "velocity": 127
     },
-    "R_PAD_DOWN": {
+    "SELECT": {
       "type": "note",
       "channel": 0,
       "note": 79,
       "velocity": 127
     },
-    "R_PAD_LEFT": {
+    "L_PAD_UP": {
       "type": "note",
       "channel": 0,
       "note": 80,
       "velocity": 127
     },
-    "R_PAD_RIGHT": {
+    "L_PAD_DOWN": {
       "type": "note",
       "channel": 0,
       "note": 81,
       "velocity": 127
     },
-    "R_PAD_UP_LONG_PRESS": {
+    "L_PAD_LEFT": {
       "type": "note",
       "channel": 0,
       "note": 82,
       "velocity": 127
     },
-    "R_PAD_DOWN_LONG_PRESS": {
+    "L_PAD_RIGHT": {
       "type": "note",
       "channel": 0,
       "note": 83,
       "velocity": 127
     },
-    "R_PAD_LEFT_LONG_PRESS": {
+    "L_PAD_UP_LONG_PRESS": {
       "type": "note",
       "channel": 0,
       "note": 84,
       "velocity": 127
     },
-    "R_PAD_RIGHT_LONG_PRESS": {
+    "L_PAD_DOWN_LONG_PRESS": {
       "type": "note",
       "channel": 0,
       "note": 85,
       "velocity": 127
     },
-    "GYRO_FORWARD": {
+    "L_PAD_LEFT_LONG_PRESS": {
       "type": "note",
       "channel": 0,
       "note": 86,
       "velocity": 127
     },
-    "GYRO_BACKWARD": {
+    "L_PAD_RIGHT_LONG_PRESS": {
       "type": "note",
       "channel": 0,
       "note": 87,
       "velocity": 127
     },
-    "R_PAD_UP_LAYER_2": {
+    "R_PAD_UP": {
       "type": "note",
       "channel": 0,
       "note": 88,
       "velocity": 127
     },
-    "R_PAD_DOWN_LAYER_2": {
+    "R_PAD_DOWN": {
       "type": "note",
       "channel": 0,
       "note": 89,
       "velocity": 127
     },
-    "R_PAD_LEFT_LAYER_2": {
+    "R_PAD_LEFT": {
       "type": "note",
       "channel": 0,
       "note": 90,
       "velocity": 127
     },
-    "R_PAD_RIGHT_LAYER_2": {
+    "R_PAD_RIGHT": {
       "type": "note",
       "channel": 0,
       "note": 91,
       "velocity": 127
     },
-    "BTN_A_LAYER_2": {
+    "R_PAD_UP_LONG_PRESS": {
       "type": "note",
       "channel": 0,
       "note": 92,
       "velocity": 127
     },
-    "BTN_B_LAYER_2": {
+    "R_PAD_DOWN_LONG_PRESS": {
       "type": "note",
       "channel": 0,
       "note": 93,
       "velocity": 127
     },
-    "BTN_X_LAYER_2": {
+    "R_PAD_LEFT_LONG_PRESS": {
       "type": "note",
       "channel": 0,
       "note": 94,
       "velocity": 127
     },
-    "BTN_Y_LAYER_2": {
+    "R_PAD_RIGHT_LONG_PRESS": {
       "type": "note",
       "channel": 0,
       "note": 95,
       "velocity": 127
     },
-    "L2_SOFT_LAYER_2": {
+    "GYRO_FORWARD": {
       "type": "note",
       "channel": 0,
       "note": 96,
       "velocity": 127
     },
-    "L2_FULL_LAYER_2": {
+    "GYRO_BACKWARD": {
       "type": "note",
       "channel": 0,
       "note": 97,
-      "velocity": 127
-    },
-    "R2_SOFT_LAYER_2": {
-      "type": "note",
-      "channel": 0,
-      "note": 98,
-      "velocity": 127
-    },
-    "R2_FULL_LAYER_2": {
-      "type": "note",
-      "channel": 0,
-      "note": 99,
-      "velocity": 127
-    },
-    "L1_LAYER_2": {
-      "type": "note",
-      "channel": 0,
-      "note": 100,
-      "velocity": 127
-    },
-    "R1_LAYER_2": {
-      "type": "note",
-      "channel": 0,
-      "note": 101,
       "velocity": 127
     }
   }

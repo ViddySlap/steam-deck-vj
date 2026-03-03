@@ -1,14 +1,13 @@
-"""Watch `xinput test` output and send mapped action events over UDP."""
+"""Listen for X11 XI2 raw key events and send mapped action events over UDP."""
 
 from __future__ import annotations
 
 import argparse
+import ctypes
+import ctypes.util
 import json
-import re
 import selectors
-import shutil
 import socket
-import subprocess
 import sys
 import termios
 import time
@@ -17,15 +16,187 @@ from dataclasses import dataclass
 from protocol.messages import encode_action_event, encode_heartbeat_event
 
 
-EVENT_HEADER_RE = re.compile(r"^EVENT type \d+ \((RawKeyPress|RawKeyRelease)\)$")
-DETAIL_RE = re.compile(r"^\s*detail:\s+(\d+)$")
 HEARTBEAT_INTERVAL_SECONDS = 0.5
+GENERIC_EVENT = 35
+XI_RAW_KEY_PRESS = 13
+XI_RAW_KEY_RELEASE = 14
+
+
+def _load_library(name: str) -> ctypes.CDLL:
+    path = ctypes.util.find_library(name)
+    if path is None:
+        raise OSError(f"failed to locate shared library: {name}")
+    return ctypes.CDLL(path)
+
+
+_LIB_X11 = _load_library("X11")
+_LIB_XI = _load_library("Xi")
+
+
+class XGenericEventCookie(ctypes.Structure):
+    _fields_ = [
+        ("type", ctypes.c_int),
+        ("serial", ctypes.c_ulong),
+        ("send_event", ctypes.c_int),
+        ("display", ctypes.c_void_p),
+        ("extension", ctypes.c_int),
+        ("evtype", ctypes.c_int),
+        ("cookie", ctypes.c_uint),
+        ("data", ctypes.c_void_p),
+    ]
+
+
+class XEvent(ctypes.Union):
+    _fields_ = [
+        ("type", ctypes.c_int),
+        ("xcookie", XGenericEventCookie),
+        ("pad", ctypes.c_long * 24),
+    ]
+
+
+class XIEventMask(ctypes.Structure):
+    _fields_ = [
+        ("deviceid", ctypes.c_int),
+        ("mask_len", ctypes.c_int),
+        ("mask", ctypes.POINTER(ctypes.c_ubyte)),
+    ]
+
+
+class XIRawEventHead(ctypes.Structure):
+    _fields_ = [
+        ("type", ctypes.c_int),
+        ("serial", ctypes.c_ulong),
+        ("send_event", ctypes.c_int),
+        ("display", ctypes.c_void_p),
+        ("extension", ctypes.c_int),
+        ("evtype", ctypes.c_int),
+        ("time", ctypes.c_ulong),
+        ("deviceid", ctypes.c_int),
+        ("sourceid", ctypes.c_int),
+        ("detail", ctypes.c_int),
+    ]
+
+
+_LIB_X11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+_LIB_X11.XOpenDisplay.restype = ctypes.c_void_p
+_LIB_X11.XCloseDisplay.argtypes = [ctypes.c_void_p]
+_LIB_X11.XCloseDisplay.restype = ctypes.c_int
+_LIB_X11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
+_LIB_X11.XDefaultRootWindow.restype = ctypes.c_ulong
+_LIB_X11.XQueryExtension.argtypes = [
+    ctypes.c_void_p,
+    ctypes.c_char_p,
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+]
+_LIB_X11.XQueryExtension.restype = ctypes.c_int
+_LIB_X11.XConnectionNumber.argtypes = [ctypes.c_void_p]
+_LIB_X11.XConnectionNumber.restype = ctypes.c_int
+_LIB_X11.XPending.argtypes = [ctypes.c_void_p]
+_LIB_X11.XPending.restype = ctypes.c_int
+_LIB_X11.XNextEvent.argtypes = [ctypes.c_void_p, ctypes.POINTER(XEvent)]
+_LIB_X11.XNextEvent.restype = ctypes.c_int
+_LIB_X11.XGetEventData.argtypes = [ctypes.c_void_p, ctypes.POINTER(XGenericEventCookie)]
+_LIB_X11.XGetEventData.restype = ctypes.c_int
+_LIB_X11.XFreeEventData.argtypes = [ctypes.c_void_p, ctypes.POINTER(XGenericEventCookie)]
+_LIB_X11.XFreeEventData.restype = None
+_LIB_X11.XFlush.argtypes = [ctypes.c_void_p]
+_LIB_X11.XFlush.restype = ctypes.c_int
+
+_LIB_XI.XIQueryVersion.argtypes = [
+    ctypes.c_void_p,
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+]
+_LIB_XI.XIQueryVersion.restype = ctypes.c_int
+_LIB_XI.XISelectEvents.argtypes = [
+    ctypes.c_void_p,
+    ctypes.c_ulong,
+    ctypes.POINTER(XIEventMask),
+    ctypes.c_int,
+]
+_LIB_XI.XISelectEvents.restype = ctypes.c_int
 
 
 @dataclass(frozen=True)
 class Xi2KeyEvent:
     keycode: str
     state: str
+
+
+class Xi2RawListener:
+    def __init__(self, device_id: int) -> None:
+        self._device_id = device_id
+        self._display = _LIB_X11.XOpenDisplay(None)
+        if not self._display:
+            raise OSError("failed to open X display")
+
+        self._extension_opcode = ctypes.c_int()
+        first_event = ctypes.c_int()
+        first_error = ctypes.c_int()
+        found = _LIB_X11.XQueryExtension(
+            self._display,
+            b"XInputExtension",
+            ctypes.byref(self._extension_opcode),
+            ctypes.byref(first_event),
+            ctypes.byref(first_error),
+        )
+        if found == 0:
+            self.close()
+            raise OSError("X Input extension is not available")
+
+        major = ctypes.c_int(2)
+        minor = ctypes.c_int(0)
+        if _LIB_XI.XIQueryVersion(self._display, ctypes.byref(major), ctypes.byref(minor)) != 0:
+            self.close()
+            raise OSError("XI2 is not available on this display")
+
+        root = _LIB_X11.XDefaultRootWindow(self._display)
+        mask_bytes = (ctypes.c_ubyte * 2)()
+        set_mask(mask_bytes, XI_RAW_KEY_PRESS)
+        set_mask(mask_bytes, XI_RAW_KEY_RELEASE)
+        event_mask = XIEventMask(
+            deviceid=self._device_id,
+            mask_len=len(mask_bytes),
+            mask=ctypes.cast(mask_bytes, ctypes.POINTER(ctypes.c_ubyte)),
+        )
+        if _LIB_XI.XISelectEvents(self._display, root, ctypes.byref(event_mask), 1) != 0:
+            self.close()
+            raise OSError("failed to select XI2 events")
+        _LIB_X11.XFlush(self._display)
+
+    def fileno(self) -> int:
+        return _LIB_X11.XConnectionNumber(self._display)
+
+    def read_event(self) -> Xi2KeyEvent | None:
+        while _LIB_X11.XPending(self._display) > 0:
+            event = XEvent()
+            _LIB_X11.XNextEvent(self._display, ctypes.byref(event))
+            if event.type != GENERIC_EVENT:
+                continue
+            if event.xcookie.extension != self._extension_opcode.value:
+                continue
+            if event.xcookie.evtype not in (XI_RAW_KEY_PRESS, XI_RAW_KEY_RELEASE):
+                continue
+            if _LIB_X11.XGetEventData(self._display, ctypes.byref(event.xcookie)) == 0:
+                continue
+            try:
+                raw = ctypes.cast(event.xcookie.data, ctypes.POINTER(XIRawEventHead)).contents
+                if raw.deviceid != self._device_id:
+                    continue
+                return Xi2KeyEvent(
+                    keycode=str(raw.detail),
+                    state="down" if event.xcookie.evtype == XI_RAW_KEY_PRESS else "up",
+                )
+            finally:
+                _LIB_X11.XFreeEventData(self._display, ctypes.byref(event.xcookie))
+        return None
+
+    def close(self) -> None:
+        if getattr(self, "_display", None):
+            _LIB_X11.XCloseDisplay(self._display)
+            self._display = None
 
 
 class TerminalNoEcho:
@@ -49,7 +220,7 @@ class TerminalNoEcho:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Watch xinput key events and send mapped action events"
+        description="Watch XI2 raw key events and send mapped action events"
     )
     parser.add_argument("--device-id", required=True, help="xinput device id")
     parser.add_argument(
@@ -101,36 +272,8 @@ def load_bindings(path: str) -> tuple[str | None, dict[str, str]]:
     return profile_name, validated
 
 
-def parse_xi2_event_block(block: list[str]) -> Xi2KeyEvent | None:
-    if not block:
-        return None
-
-    match = EVENT_HEADER_RE.match(block[0].strip())
-    if match is None:
-        return None
-
-    state_name = match.group(1)
-    keycode: str | None = None
-    for line in block[1:]:
-        detail_match = DETAIL_RE.match(line)
-        if detail_match is not None:
-            keycode = detail_match.group(1)
-
-    if keycode is None:
-        return None
-
-    return Xi2KeyEvent(
-        keycode=keycode,
-        state="down" if state_name == "RawKeyPress" else "up",
-    )
-
-
-def is_complete_xi2_event_block(block: list[str]) -> bool:
-    if not block:
-        return False
-    if EVENT_HEADER_RE.match(block[0].strip()) is None:
-        return False
-    return any(DETAIL_RE.match(line) for line in block[1:])
+def set_mask(mask: ctypes.Array[ctypes.c_ubyte], event_type: int) -> None:
+    mask[event_type >> 3] |= 1 << (event_type & 7)
 
 
 def should_emit_event(event: Xi2KeyEvent, held_keys: set[str]) -> bool:
@@ -147,22 +290,21 @@ def should_emit_event(event: Xi2KeyEvent, held_keys: set[str]) -> bool:
 
 
 def flush_block(
-    block: list[str],
+    event: Xi2KeyEvent | None,
     bindings: dict[str, str],
     held_keys: set[str],
 ) -> tuple[Xi2KeyEvent | None, str | None]:
-    parsed = parse_xi2_event_block(block)
-    if parsed is None:
+    if event is None:
         return None, None
 
-    action = bindings.get(parsed.keycode)
+    action = bindings.get(event.keycode)
     if action is None:
         return None, None
 
-    if not should_emit_event(parsed, held_keys):
+    if not should_emit_event(event, held_keys):
         return None, None
 
-    return parsed, action
+    return event, action
 
 
 def next_select_timeout(
@@ -173,8 +315,7 @@ def next_select_timeout(
     now: float,
 ) -> float | None:
     if block:
-        # Finish the current XI2 event block before considering heartbeat traffic.
-        return None
+        return 0.0
     if not held_keys:
         return None
     return max(0.0, next_heartbeat_at - now)
@@ -235,25 +376,13 @@ def run_sender(
     resolved_profile_name = profile_name or loaded_profile_name
     seq = 1
     held_keys: set[str] = set()
-    xinput_command = ["xinput", "test-xi2", str(device_id)]
-    if shutil.which("script") is not None:
-        xinput_command = [
-            "script",
-            "-qfec",
-            f"xinput test-xi2 {device_id}",
-            "/dev/null",
-        ]
-
     try:
-        process = subprocess.Popen(
-            xinput_command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-        )
+        listener = Xi2RawListener(int(device_id))
     except OSError as exc:
-        print(f"Error: failed to start xinput: {exc}")
+        print(f"Error: failed to start XI2 listener: {exc}")
+        return 2
+    except ValueError:
+        print(f"Error: invalid device id: {device_id}")
         return 2
 
     print(f"watching XI2 raw key events for device {device_id} and sending to {target}")
@@ -262,15 +391,13 @@ def run_sender(
         with TerminalNoEcho():
             try:
                 selector = selectors.DefaultSelector()
-                assert process.stdout is not None
-                selector.register(process.stdout, selectors.EVENT_READ)
-                block: list[str] = []
+                selector.register(listener.fileno(), selectors.EVENT_READ)
                 next_heartbeat_at = time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
                 while True:
                     now = time.monotonic()
                     timeout = next_select_timeout(
                         held_keys=held_keys,
-                        block=block,
+                        block=[],
                         next_heartbeat_at=next_heartbeat_at,
                         now=now,
                     )
@@ -287,77 +414,27 @@ def run_sender(
                         next_heartbeat_at = time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
                         continue
 
-                    raw_line = process.stdout.readline()
-                    if raw_line == "":
-                        break
-                    line = raw_line.rstrip("\r\n")
-                    if line.startswith("EVENT type ") and block:
-                        parsed, action = flush_block(block, bindings, held_keys)
-                        block = []
-                        if parsed is not None and action is not None:
+                    parsed = listener.read_event()
+                    while parsed is not None:
+                        event, action = flush_block(parsed, bindings, held_keys)
+                        if event is not None and action is not None:
                             send_action(
                                 sock,
                                 resolved_target,
                                 action=action,
-                                state=parsed.state,
+                                state=event.state,
                                 seq=seq,
                                 profile_name=resolved_profile_name,
                                 profile_hash=profile_hash,
                             )
                             seq += 1
                             next_heartbeat_at = time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
-
-                    if line.strip():
-                        block.append(line)
-                        if is_complete_xi2_event_block(block):
-                            parsed, action = flush_block(block, bindings, held_keys)
-                            block = []
-                            if parsed is not None and action is not None:
-                                send_action(
-                                    sock,
-                                    resolved_target,
-                                    action=action,
-                                    state=parsed.state,
-                                    seq=seq,
-                                    profile_name=resolved_profile_name,
-                                    profile_hash=profile_hash,
-                                )
-                                seq += 1
-                                next_heartbeat_at = time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
-                        continue
-
-                    parsed, action = flush_block(block, bindings, held_keys)
-                    block = []
-                    if parsed is not None and action is not None:
-                        send_action(
-                            sock,
-                            resolved_target,
-                            action=action,
-                            state=parsed.state,
-                            seq=seq,
-                            profile_name=resolved_profile_name,
-                            profile_hash=profile_hash,
-                        )
-                        seq += 1
-                        next_heartbeat_at = time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
-
-                parsed, action = flush_block(block, bindings, held_keys)
-                if parsed is not None and action is not None:
-                    send_action(
-                        sock,
-                        resolved_target,
-                        action=action,
-                        state=parsed.state,
-                        seq=seq,
-                        profile_name=resolved_profile_name,
-                        profile_hash=profile_hash,
-                    )
+                        parsed = listener.read_event()
                 selector.close()
             except KeyboardInterrupt:
                 print("stopping sender")
             finally:
-                process.terminate()
-                process.wait(timeout=2)
+                listener.close()
     return 0
 
 

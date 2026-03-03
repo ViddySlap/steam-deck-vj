@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 import json
 import tempfile
 import unittest
@@ -8,53 +9,12 @@ from pathlib import Path
 from deck.xinput_send import (
     Xi2KeyEvent,
     flush_block,
-    is_complete_xi2_event_block,
     load_bindings,
     next_select_timeout,
-    parse_xi2_event_block,
+    set_mask,
     should_emit_event,
 )
 from protocol.messages import encode_action_event, parse_action_event
-
-
-class ParseXi2EventBlockTests(unittest.TestCase):
-    def test_parses_initial_key_press(self) -> None:
-        self.assertEqual(
-            parse_xi2_event_block(
-                [
-                    "EVENT type 13 (RawKeyPress)",
-                    "    device: 5 (5)",
-                    "    time: 3096762",
-                    "    detail: 67",
-                ]
-            ),
-            Xi2KeyEvent(keycode="67", state="down"),
-        )
-
-    def test_parses_key_release(self) -> None:
-        self.assertEqual(
-            parse_xi2_event_block(
-                [
-                    "EVENT type 14 (RawKeyRelease)",
-                    "    device: 5 (5)",
-                    "    time: 3101444",
-                    "    detail: 67",
-                ]
-            ),
-            Xi2KeyEvent(keycode="67", state="up"),
-        )
-
-    def test_ignores_other_event_blocks(self) -> None:
-        self.assertIsNone(
-            parse_xi2_event_block(
-                [
-                    "EVENT type 2 (KeyPress)",
-                    "    device: 3 (5)",
-                    "    time: 3101444",
-                    "    detail: 67",
-                ]
-            )
-        )
 
 
 class LoadBindingsTests(unittest.TestCase):
@@ -133,12 +93,7 @@ class ShouldEmitEventTests(unittest.TestCase):
 class FlushBlockTests(unittest.TestCase):
     def test_flushes_bound_press(self) -> None:
         parsed, action = flush_block(
-            [
-                "EVENT type 13 (RawKeyPress)",
-                "    device: 5 (5)",
-                "    time: 3096762",
-                "    detail: 67",
-            ],
+            Xi2KeyEvent(keycode="67", state="down"),
             {"67": "BTN_A"},
             set(),
         )
@@ -151,12 +106,7 @@ class FlushBlockTests(unittest.TestCase):
     def test_flushes_release_without_needing_trailing_blank_separator(self) -> None:
         held_keys = {"67"}
         parsed, action = flush_block(
-            [
-                "EVENT type 14 (RawKeyRelease)",
-                "    device: 5 (5)",
-                "    time: 3096878",
-                "    detail: 67",
-            ],
+            Xi2KeyEvent(keycode="67", state="up"),
             {"67": "BTN_A"},
             held_keys,
         )
@@ -168,40 +118,23 @@ class FlushBlockTests(unittest.TestCase):
         self.assertEqual(held_keys, set())
 
 
-class Xi2EventCompletionTests(unittest.TestCase):
-    def test_detects_complete_raw_keypress_block_at_detail_line(self) -> None:
-        self.assertTrue(
-            is_complete_xi2_event_block(
-                [
-                    "EVENT type 13 (RawKeyPress)",
-                    "    device: 5 (5)",
-                    "    time: 3096762",
-                    "    detail: 67",
-                ]
-            )
-        )
-
-    def test_incomplete_raw_keyrelease_block_is_not_complete_before_detail_line(self) -> None:
-        self.assertFalse(
-            is_complete_xi2_event_block(
-                [
-                    "EVENT type 14 (RawKeyRelease)",
-                    "    device: 5 (5)",
-                    "    time: 3096878",
-                ]
-            )
-        )
+class SetMaskTests(unittest.TestCase):
+    def test_sets_bit_for_event_type(self) -> None:
+        mask = (ctypes.c_ubyte * 2)()
+        set_mask(mask, 13)
+        self.assertEqual(mask[1], 0b00100000)
 
 
 class NextSelectTimeoutTests(unittest.TestCase):
-    def test_waits_for_current_block_before_heartbeat(self) -> None:
-        self.assertIsNone(
+    def test_checks_immediately_when_internal_work_is_pending(self) -> None:
+        self.assertEqual(
             next_select_timeout(
                 held_keys={"67"},
-                block=["EVENT type 3 (KeyRelease)"],
+                block=["pending"],
                 next_heartbeat_at=10.0,
                 now=9.9,
-            )
+            ),
+            0.0,
         )
 
     def test_uses_heartbeat_deadline_when_idle_and_holding(self) -> None:

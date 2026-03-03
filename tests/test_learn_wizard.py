@@ -49,11 +49,11 @@ class DuplicateDetectionTests(unittest.TestCase):
 
 
 class SkipInputTests(unittest.TestCase):
-    def test_detects_lowercase_s(self) -> None:
-        self.assertTrue(is_skip_input(b"s"))
+    def test_detects_escape(self) -> None:
+        self.assertTrue(is_skip_input(b"\x1b"))
 
-    def test_detects_uppercase_s(self) -> None:
-        self.assertTrue(is_skip_input(b"S"))
+    def test_ignores_letter_s(self) -> None:
+        self.assertFalse(is_skip_input(b"s"))
 
     def test_ignores_enter(self) -> None:
         self.assertFalse(is_skip_input(b"\n"))

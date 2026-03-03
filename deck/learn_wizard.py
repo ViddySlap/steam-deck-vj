@@ -94,7 +94,7 @@ def find_duplicate_action(bindings: dict[str, str], token: str) -> str | None:
 
 
 def is_skip_input(chars: bytes) -> bool:
-    return b"s" in chars.lower()
+    return b"\x1b" in chars
 
 
 def write_bindings(path: str, profile_name: str, bindings: dict[str, str]) -> None:
@@ -126,7 +126,7 @@ def print_header(device_id: str, output_path: str) -> None:
     print("- Press the Steam Deck control you want to map")
     print("- Watch the latest captured keycode")
     print("- Press Enter to confirm the latest captured keycode")
-    print("- Press S to skip the current action and leave it unmapped")
+    print("- Press Esc to skip the current action and leave it unmapped")
     print("- Press Ctrl+X at any time to exit without saving")
     print("- If you hit Enter too early, the wizard will warn and keep waiting")
     print("")
@@ -135,7 +135,7 @@ def print_header(device_id: str, output_path: str) -> None:
 def prompt_action(action: str) -> None:
     print("")
     print(f"Map action: {action}")
-    print("Waiting for key press, or press S to skip...")
+    print("Waiting for key press, or press Esc to skip...")
 
 
 def main(argv: list[str] | None = None) -> int:

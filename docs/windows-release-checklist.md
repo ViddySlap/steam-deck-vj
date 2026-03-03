@@ -53,6 +53,5 @@ On the target Windows machine:
 
 - installer updates the packaged EXE and example config files
 - installer preserves `config\windows_receiver_settings.local.json`
-- installer preserves `config\windows_midi_map.local.json`
 
-Edit the `.local.json` files on installed machines for machine-specific settings and mappings.
+Edit `windows_receiver_settings.local.json` on installed machines for machine-specific settings.

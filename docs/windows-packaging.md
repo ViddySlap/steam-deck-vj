@@ -84,17 +84,16 @@ The installer EXE installs:
 
 - `STEAMDECK-MIDI-RECEIVER.exe`
 - `config\windows_midi_map.json`
-- `config\windows_midi_map.local.json`
 - `config\windows_receiver_settings.example.json`
 - `config\windows_receiver_settings.local.json`
 - `scripts\start_installed_receiver.ps1`
 - desktop and Start Menu shortcuts
 
-The installed shortcut launches the packaged EXE using the installed local config files when present.
+The installed shortcut launches the packaged EXE using the installed receiver settings file.
 
 ## Notes
 
 - `loopMIDI` remains a third-party prerequisite.
 - The PyInstaller build bundles the Python runtime and receiver code into a standalone console executable.
 - The installer build wraps that executable into a single setup EXE for distribution.
-- Use the installed `.local.json` files for machine-specific edits so upgrades do not overwrite them.
+- Use `windows_receiver_settings.local.json` for machine-specific edits so upgrades do not overwrite them.

@@ -40,7 +40,6 @@ Name: "{app}\config"; Permissions: users-modify
 Source: "..\..\dist\STEAMDECK-MIDI-RECEIVER.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\assets\windows\receiver.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\config\windows_midi_map.json"; DestDir: "{app}\config"; Flags: ignoreversion
-Source: "..\..\config\windows_midi_map.json"; DestDir: "{app}\config"; DestName: "windows_midi_map.local.json"; Flags: onlyifdoesntexist
 Source: "..\..\config\windows_receiver_settings.example.json"; DestDir: "{app}\config"; Flags: ignoreversion
 Source: "..\..\config\windows_receiver_settings.example.json"; DestDir: "{app}\config"; DestName: "windows_receiver_settings.local.json"; Flags: onlyifdoesntexist
 Source: "..\..\scripts\windows\start_installed_receiver.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion

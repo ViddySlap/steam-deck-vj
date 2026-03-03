@@ -6,6 +6,7 @@ from pathlib import Path
 
 from deck.learn_wizard import (
     find_duplicate_action,
+    is_skip_input,
     load_actions,
     parse_key_press,
     write_bindings,
@@ -47,6 +48,17 @@ class DuplicateDetectionTests(unittest.TestCase):
         self.assertEqual(action, "BTN_A")
 
 
+class SkipInputTests(unittest.TestCase):
+    def test_detects_lowercase_s(self) -> None:
+        self.assertTrue(is_skip_input(b"s"))
+
+    def test_detects_uppercase_s(self) -> None:
+        self.assertTrue(is_skip_input(b"S"))
+
+    def test_ignores_enter(self) -> None:
+        self.assertFalse(is_skip_input(b"\n"))
+
+
 class WriteBindingsTests(unittest.TestCase):
     def test_writes_token_to_action_map(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -56,3 +68,12 @@ class WriteBindingsTests(unittest.TestCase):
 
         self.assertIn('"14": "BTN_A"', written)
         self.assertIn('"15": "BTN_B"', written)
+
+    def test_omits_skipped_actions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "deck_bindings.json"
+            write_bindings(str(path), "default", {"BTN_A": "14"})
+            written = path.read_text(encoding="utf-8")
+
+        self.assertIn('"14": "BTN_A"', written)
+        self.assertNotIn("BTN_B", written)

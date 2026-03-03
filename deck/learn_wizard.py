@@ -93,6 +93,10 @@ def find_duplicate_action(bindings: dict[str, str], token: str) -> str | None:
     return None
 
 
+def is_skip_input(chars: bytes) -> bool:
+    return b"s" in chars.lower()
+
+
 def write_bindings(path: str, profile_name: str, bindings: dict[str, str]) -> None:
     if os.path.isdir(path):
         raise ValueError(
@@ -122,6 +126,7 @@ def print_header(device_id: str, output_path: str) -> None:
     print("- Press the Steam Deck control you want to map")
     print("- Watch the latest captured keycode")
     print("- Press Enter to confirm the latest captured keycode")
+    print("- Press S to skip the current action and leave it unmapped")
     print("- Press Ctrl+X at any time to exit without saving")
     print("- If you hit Enter too early, the wizard will warn and keep waiting")
     print("")
@@ -130,7 +135,7 @@ def print_header(device_id: str, output_path: str) -> None:
 def prompt_action(action: str) -> None:
     print("")
     print(f"Map action: {action}")
-    print("Waiting for key press...")
+    print("Waiting for key press, or press S to skip...")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -197,6 +202,14 @@ def main(argv: list[str] | None = None) -> int:
                             print("")
                             print("Wizard cancelled. No bindings were written.")
                             return 1
+                        if is_skip_input(chars):
+                            current_action = actions[action_index]
+                            print(f"Skipped: {current_action}")
+                            candidate = None
+                            action_index += 1
+                            if action_index < len(actions):
+                                prompt_action(actions[action_index])
+                            continue
                         if b"\n" not in chars and b"\r" not in chars:
                             continue
                         if candidate is None:
@@ -233,7 +246,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Wrote bindings to {args.out}")
     print("Summary:")
     for action in actions:
-        token = bindings.get(action, "(missing)")
+        token = bindings.get(action, "(skipped)")
         print(f"- {action}: {token}")
     return 0
 

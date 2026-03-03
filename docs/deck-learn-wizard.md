@@ -8,6 +8,7 @@ writes `deck_bindings.json`.
 - The wizard listens for `key press <code>` events only.
 - Each key press becomes the current candidate for the action being mapped.
 - Press `Enter` to confirm the most recent candidate.
+- Press `S` to skip the current action and leave it unmapped.
 - If `Enter` is pressed before any candidate is captured, the wizard prints a warning and keeps waiting.
 - If a keycode is already assigned to a previous action, the wizard prints a warning before confirmation.
 

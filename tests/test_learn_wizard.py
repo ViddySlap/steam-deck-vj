@@ -52,6 +52,9 @@ class SkipInputTests(unittest.TestCase):
     def test_detects_escape(self) -> None:
         self.assertTrue(is_skip_input(b"\x1b"))
 
+    def test_ignores_escape_prefixed_sequence(self) -> None:
+        self.assertFalse(is_skip_input(b"\x1bOP"))
+
     def test_ignores_letter_s(self) -> None:
         self.assertFalse(is_skip_input(b"s"))
 

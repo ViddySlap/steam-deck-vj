@@ -94,7 +94,7 @@ def find_duplicate_action(bindings: dict[str, str], token: str) -> str | None:
 
 
 def is_skip_input(chars: bytes) -> bool:
-    return b"\x1b" in chars
+    return chars == b"\x1b"
 
 
 def write_bindings(path: str, profile_name: str, bindings: dict[str, str]) -> None:

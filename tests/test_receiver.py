@@ -774,6 +774,80 @@ class ActionReceiverTests(unittest.TestCase):
             ],
         )
 
+    def test_layer_state_starts_unknown_and_uses_ground_truth_then_toggle(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "START": NoteMapping(action="START", kind="note", channel=1, note=78),
+                "BTN_A": NoteMapping(action="BTN_A", kind="note", channel=0, note=36),
+                "BTN_A_LAYER_2": NoteMapping(
+                    action="BTN_A_LAYER_2",
+                    kind="note",
+                    channel=0,
+                    note=37,
+                ),
+            },
+            timeout_seconds=1.0,
+            macro_settings=MacroSettings(layer_refresh_ms=500),
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"START","state":"down","seq":1}', self.addr, now=0.0
+        )
+        receiver.handle_datagram(
+            b'{"action":"BTN_A_LAYER_2","state":"down","seq":2}', self.addr, now=0.1
+        )
+        receiver.handle_datagram(
+            b'{"action":"START","state":"down","seq":3}', self.addr, now=0.2
+        )
+        receiver.handle_datagram(
+            b'{"action":"BTN_A_LAYER_2","state":"down","seq":4}', self.addr, now=0.3
+        )
+
+        self.assertEqual(
+            self.midi.calls,
+            [
+                ("note_on", 1, 78, 127),
+                ("note_on", 0, 78, 127),
+                ("note_on", 0, 37, 127),
+                ("note_off", 0, 78, 0),
+                ("note_on", 1, 78, 127),
+                ("note_on", 0, 78, 127),
+                ("note_on", 0, 37, 127),
+            ],
+        )
+
+    def test_bumper_layer_state_publishes_and_refreshes(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "SELECT": NoteMapping(action="SELECT", kind="note", channel=1, note=79),
+                "L1_LAYER_2": NoteMapping(
+                    action="L1_LAYER_2",
+                    kind="note",
+                    channel=0,
+                    note=61,
+                ),
+            },
+            timeout_seconds=1.0,
+            macro_settings=MacroSettings(layer_refresh_ms=500),
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"L1_LAYER_2","state":"down","seq":1}', self.addr, now=0.0
+        )
+        receiver.advance_layer_state_publish(now=0.4)
+        receiver.advance_layer_state_publish(now=0.5)
+
+        self.assertEqual(
+            self.midi.calls,
+            [
+                ("note_on", 0, 79, 127),
+                ("note_on", 0, 61, 127),
+                ("note_on", 0, 79, 127),
+            ],
+        )
+
 
 class ServeForeverFeedbackTests(unittest.TestCase):
     def test_drains_feedback_messages(self) -> None:

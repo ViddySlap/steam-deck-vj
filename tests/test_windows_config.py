@@ -59,6 +59,7 @@ class LoadMidiMapTests(unittest.TestCase):
         self.assertEqual(config.macro_settings.update_hz, 20)
         self.assertEqual(config.macro_settings.macro_delay_ms, 80)
         self.assertEqual(config.macro_settings.modifier_hold_ms, 2000)
+        self.assertEqual(config.macro_settings.layer_refresh_ms, 500)
         self.assertIsInstance(config.mappings["BTN_A"], NoteMapping)
         self.assertIsInstance(config.mappings["DPAD_UP"], ControlChangeMapping)
         self.assertIsInstance(config.mappings["DPAD_UP_LONG_PRESS"], MacroCCMapping)

@@ -20,6 +20,7 @@ class MacroSettings:
     feedback_match_tolerance: int = 2
     macro_delay_ms: int = 80
     modifier_hold_ms: int = 2000
+    layer_refresh_ms: int = 500
 
     @property
     def step_interval_seconds(self) -> float:
@@ -135,6 +136,7 @@ def _parse_macro_settings(spec: object) -> MacroSettings:
     )
     macro_delay_ms = _read_positive_int(spec, "macro_delay_ms", default=80)
     modifier_hold_ms = _read_positive_int(spec, "modifier_hold_ms", default=2000)
+    layer_refresh_ms = _read_positive_int(spec, "layer_refresh_ms", default=500)
     if min_value >= max_value:
         raise ConfigError("macro_settings min_value must be less than max_value")
 
@@ -146,6 +148,7 @@ def _parse_macro_settings(spec: object) -> MacroSettings:
         feedback_match_tolerance=feedback_match_tolerance,
         macro_delay_ms=macro_delay_ms,
         modifier_hold_ms=modifier_hold_ms,
+        layer_refresh_ms=layer_refresh_ms,
     )
 
 

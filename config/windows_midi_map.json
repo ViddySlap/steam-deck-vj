@@ -5,7 +5,8 @@
     "min_value": 0,
     "max_value": 127,
     "macro_delay_ms": 80,
-    "modifier_hold_ms": 2000
+    "modifier_hold_ms": 2000,
+    "layer_refresh_ms": 500
   },
   "mappings": {
     "BTN_A": {
@@ -262,13 +263,13 @@
     },
     "START": {
       "type": "note",
-      "channel": 0,
+      "channel": 1,
       "note": 78,
       "velocity": 127
     },
     "SELECT": {
       "type": "note",
-      "channel": 0,
+      "channel": 1,
       "note": 79,
       "velocity": 127
     },

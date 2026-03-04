@@ -24,6 +24,27 @@ from windows.midi import MidiControlChange, MidiError, MidiIn, MidiOut
 
 LOGGER = logging.getLogger(__name__)
 
+LAYER_UNKNOWN = "unknown"
+LAYER_1 = "layer_1"
+LAYER_2 = "layer_2"
+
+ABXY_LAYER_1_ACTIONS = {"BTN_A", "BTN_B", "BTN_X", "BTN_Y"}
+ABXY_LAYER_2_ACTIONS = {
+    "BTN_A_LAYER_2",
+    "BTN_B_LAYER_2",
+    "BTN_X_LAYER_2",
+    "BTN_Y_LAYER_2",
+}
+BUMPER_LAYER_1_ACTIONS = {"L1", "R1", "L2_SOFT", "L2_FULL", "R2_SOFT", "R2_FULL"}
+BUMPER_LAYER_2_ACTIONS = {
+    "L1_LAYER_2",
+    "R1_LAYER_2",
+    "L2_SOFT_LAYER_2",
+    "L2_FULL_LAYER_2",
+    "R2_SOFT_LAYER_2",
+    "R2_FULL_LAYER_2",
+}
+
 
 @dataclass
 class SenderState:
@@ -64,6 +85,16 @@ class ActiveStagedNoteMacro:
     trigger_sent: bool = False
 
 
+@dataclass
+class LayerStatePublisher:
+    note: int
+    raw_channel: int
+    state_channel: int
+    state: str = LAYER_UNKNOWN
+    last_published_state: str | None = None
+    last_publish_time: float = 0.0
+
+
 class ActionReceiver:
     """Receive action messages and emit mapped MIDI output."""
 
@@ -98,6 +129,8 @@ class ActionReceiver:
         self._active_macro_fades: dict[tuple[int, int], ActiveMacroFade] = {}
         self._active_relative_ccs: dict[str, ActiveRelativeCC] = {}
         self._active_staged_note_macros: dict[str, ActiveStagedNoteMacro] = {}
+        self._abxy_layer_publisher = self._build_layer_publisher("START")
+        self._bumper_layer_publisher = self._build_layer_publisher("SELECT")
         self._tracked_macro_keys = {
             (mapping.channel, mapping.cc)
             for mapping in mappings.values()
@@ -115,6 +148,8 @@ class ActionReceiver:
             )
         if self._active_staged_note_macros:
             intervals.append(0.01)
+        if self._has_known_layer_state():
+            intervals.append(self._macro_settings.layer_refresh_ms / 1000.0)
         if not intervals:
             return None
         return min(intervals)
@@ -126,6 +161,7 @@ class ActionReceiver:
         self.advance_fades(now=timestamp)
         self.advance_relative_ccs(now=timestamp)
         self.advance_staged_note_macros(now=timestamp)
+        self.advance_layer_state_publish(now=timestamp)
 
         try:
             event = parse_action_event(payload)
@@ -151,6 +187,7 @@ class ActionReceiver:
             return True
         if not self._allow_event(event, timestamp):
             return False
+        self._update_layer_state_from_action(event, timestamp)
         self._refresh_staged_note_macros(event.action, timestamp)
         try:
             return self._dispatch_event(event, timestamp)
@@ -164,6 +201,7 @@ class ActionReceiver:
         self.advance_fades(now=timestamp)
         self.advance_relative_ccs(now=timestamp)
         self.advance_staged_note_macros(now=timestamp)
+        self.advance_layer_state_publish(now=timestamp)
         if not self._sender_states:
             return False
 
@@ -291,6 +329,19 @@ class ActionReceiver:
                 continue
             self._midi_out.note_off(active.modifier_channel, active.note, 0)
             self._active_staged_note_macros.pop(action, None)
+
+    def advance_layer_state_publish(self, now: float | None = None) -> None:
+        timestamp = self._clock() if now is None else now
+        refresh_interval = self._macro_settings.layer_refresh_ms / 1000.0
+        for publisher in (self._abxy_layer_publisher, self._bumper_layer_publisher):
+            if publisher is None or publisher.state == LAYER_UNKNOWN:
+                continue
+            if (
+                publisher.last_published_state == publisher.state
+                and (timestamp - publisher.last_publish_time) < refresh_interval
+            ):
+                continue
+            self._publish_layer_state(publisher, timestamp)
 
     def _allow_event(self, event: ActionEvent, timestamp: float) -> bool:
         if timestamp < self._loop_guard_until:
@@ -504,6 +555,85 @@ class ActionReceiver:
                 action,
                 timestamp + extension,
             )
+
+    def _update_layer_state_from_action(self, event: ActionEvent, timestamp: float) -> None:
+        if event.state != "down":
+            return
+        self._handle_layer_toggle_hint(event.action, timestamp)
+        self._handle_layer_ground_truth(event.action, timestamp)
+
+    def _handle_layer_toggle_hint(self, action: str, timestamp: float) -> None:
+        if action == "START":
+            self._toggle_known_layer_state(self._abxy_layer_publisher, timestamp)
+        elif action == "SELECT":
+            self._toggle_known_layer_state(self._bumper_layer_publisher, timestamp)
+
+    def _handle_layer_ground_truth(self, action: str, timestamp: float) -> None:
+        if action in ABXY_LAYER_1_ACTIONS:
+            self._set_layer_state(self._abxy_layer_publisher, LAYER_1, timestamp, action)
+        elif action in ABXY_LAYER_2_ACTIONS:
+            self._set_layer_state(self._abxy_layer_publisher, LAYER_2, timestamp, action)
+
+        if action in BUMPER_LAYER_1_ACTIONS:
+            self._set_layer_state(self._bumper_layer_publisher, LAYER_1, timestamp, action)
+        elif action in BUMPER_LAYER_2_ACTIONS:
+            self._set_layer_state(self._bumper_layer_publisher, LAYER_2, timestamp, action)
+
+    def _toggle_known_layer_state(
+        self,
+        publisher: LayerStatePublisher | None,
+        timestamp: float,
+    ) -> None:
+        if publisher is None or publisher.state == LAYER_UNKNOWN:
+            return
+        next_state = LAYER_2 if publisher.state == LAYER_1 else LAYER_1
+        self._set_layer_state(publisher, next_state, timestamp, "toggle")
+
+    def _set_layer_state(
+        self,
+        publisher: LayerStatePublisher | None,
+        state: str,
+        timestamp: float,
+        source: str,
+    ) -> None:
+        if publisher is None:
+            return
+        if publisher.state not in {LAYER_UNKNOWN, state}:
+            LOGGER.info(
+                "layer state resync for note=%s from=%s to=%s via=%s",
+                publisher.note,
+                publisher.state,
+                state,
+                source,
+            )
+        publisher.state = state
+        if publisher.last_published_state == state:
+            return
+        self._publish_layer_state(publisher, timestamp)
+
+    def _publish_layer_state(self, publisher: LayerStatePublisher, timestamp: float) -> None:
+        if publisher.state == LAYER_2:
+            self._midi_out.note_on(publisher.state_channel, publisher.note, 127)
+        else:
+            self._midi_out.note_off(publisher.state_channel, publisher.note, 0)
+        publisher.last_published_state = publisher.state
+        publisher.last_publish_time = timestamp
+
+    def _has_known_layer_state(self) -> bool:
+        return any(
+            publisher is not None and publisher.state != LAYER_UNKNOWN
+            for publisher in (self._abxy_layer_publisher, self._bumper_layer_publisher)
+        )
+
+    def _build_layer_publisher(self, action: str) -> LayerStatePublisher | None:
+        mapping = self._mappings.get(action)
+        if not isinstance(mapping, NoteMapping):
+            return None
+        return LayerStatePublisher(
+            note=mapping.note,
+            raw_channel=mapping.channel,
+            state_channel=0,
+        )
 
     def _toggle_target(self, current_value: int) -> int:
         midpoint = (self._macro_settings.min_value + self._macro_settings.max_value) / 2

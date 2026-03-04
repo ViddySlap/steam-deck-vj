@@ -76,6 +76,12 @@ these mappings; each sent CC value is a standalone increment/decrement step.
 second trigger `note_on` on a different channel using the same note number. The modifier note is
 held for a fixed receiver-side duration and then released automatically.
 
+The receiver also maintains authoritative layer-state publishers for the Steam Input toggle layers:
+- ABXY layer state uses the `START` note number on Channel 1
+- bumper/trigger layer state uses the `SELECT` note number on Channel 1
+- raw `START` and `SELECT` button presses remain available on Channel 2 for MIDI Learn
+- layer state self-heals from ground-truth action IDs such as `BTN_A_LAYER_2` or `L1_LAYER_2`
+
 Tracked `macro_cc` parameters are also the current feedback/cache subset. When `--feedback-port` is
 configured, inbound CC feedback on the same channel/CC updates the cache. During an active fade, the
 receiver ignores matching feedback values but cancels the fade if Resolume reports a different value,

@@ -204,16 +204,15 @@ class ActionReceiverTests(unittest.TestCase):
         self.assertFalse(handled_during_cooldown)
         self.assertEqual(len(self.midi.calls), 5)
 
-    def test_macro_click_toggles_same_cc_without_release_output(self) -> None:
+    def test_dpad_down_click_emits_independent_note_trigger(self) -> None:
         receiver = ActionReceiver(
             self.midi,
             {
-                "DPAD_DOWN": MacroCCMapping(
+                "DPAD_DOWN": NoteMapping(
                     action="DPAD_DOWN",
-                    kind="macro_cc",
+                    kind="note",
                     channel=0,
-                    cc=20,
-                    gesture="click",
+                    note=98,
                 )
             },
             timeout_seconds=1.0,
@@ -229,7 +228,10 @@ class ActionReceiverTests(unittest.TestCase):
             b'{"action":"DPAD_DOWN","state":"down","seq":3}', self.addr, now=0.2
         )
 
-        self.assertEqual(self.midi.calls, [("cc", 0, 20, 127), ("cc", 0, 20, 0)])
+        self.assertEqual(
+            self.midi.calls,
+            [("note_on", 0, 98, 127), ("note_off", 0, 98, 0), ("note_on", 0, 98, 127)],
+        )
 
     def test_macro_long_press_fades_to_target_and_ignores_release(self) -> None:
         receiver = ActionReceiver(
@@ -265,16 +267,15 @@ class ActionReceiverTests(unittest.TestCase):
             [("cc", 0, 20, 0), ("cc", 0, 20, 64), ("cc", 0, 20, 70), ("cc", 0, 20, 127)],
         )
 
-    def test_macro_click_cancels_active_fade_for_same_layer(self) -> None:
+    def test_dpad_down_click_does_not_interrupt_long_press_macro_fade(self) -> None:
         receiver = ActionReceiver(
             self.midi,
             {
-                "DPAD_DOWN": MacroCCMapping(
+                "DPAD_DOWN": NoteMapping(
                     action="DPAD_DOWN",
-                    kind="macro_cc",
+                    kind="note",
                     channel=0,
-                    cc=20,
-                    gesture="click",
+                    note=98,
                 ),
                 "DPAD_DOWN_LONG_PRESS": MacroCCMapping(
                     action="DPAD_DOWN_LONG_PRESS",
@@ -297,11 +298,22 @@ class ActionReceiverTests(unittest.TestCase):
         receiver.handle_datagram(
             b'{"action":"DPAD_DOWN","state":"down","seq":2}', self.addr, now=1.1
         )
+        receiver.handle_datagram(
+            b'{"action":"DPAD_DOWN","state":"up","seq":3}', self.addr, now=1.2
+        )
         receiver.advance_fades(now=2.0)
 
         self.assertEqual(
             self.midi.calls,
-            [("cc", 0, 20, 0), ("cc", 0, 20, 64), ("cc", 0, 20, 70), ("cc", 0, 20, 0)],
+            [
+                ("cc", 0, 20, 0),
+                ("cc", 0, 20, 64),
+                ("cc", 0, 20, 70),
+                ("note_on", 0, 98, 127),
+                ("cc", 0, 20, 76),
+                ("note_off", 0, 98, 0),
+                ("cc", 0, 20, 127),
+            ],
         )
 
     def test_macro_fades_continue_after_sender_timeout(self) -> None:

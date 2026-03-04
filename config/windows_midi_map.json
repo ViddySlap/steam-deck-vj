@@ -61,10 +61,10 @@
       "gesture": "click"
     },
     "DPAD_DOWN": {
-      "type": "macro_cc",
+      "type": "note",
       "channel": 0,
-      "cc": 20,
-      "gesture": "click"
+      "note": 98,
+      "velocity": 127
     },
     "DPAD_LEFT": {
       "type": "macro_cc",

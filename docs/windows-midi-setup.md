@@ -30,6 +30,14 @@ DECK_IN
 
 `DECK_IN` is the control path from the bridge into Resolume.
 
+If you want receiver-side cache feedback from Resolume, create a second port:
+
+```text
+DECK_OUT
+```
+
+`DECK_OUT` is the feedback path from Resolume back into the receiver.
+
 ## 3. Confirm the Port Is Visible to Python
 
 Run:
@@ -41,6 +49,8 @@ py -m windows.list_midi_ports
 Expected result:
 
 ```text
+Available MIDI input ports:
+- [0] DECK_OUT
 Available MIDI output ports:
 - [0] DECK_IN
 ```
@@ -50,13 +60,13 @@ Available MIDI output ports:
 Run:
 
 ```powershell
-py -m windows.win_recv --map config/windows_midi_map.json --midi-port "DECK_IN" --verbose
+py -m windows.win_recv --map config/windows_midi_map.json --midi-port "DECK_IN" --feedback-port "DECK_OUT" --verbose
 ```
 
 If you use the default port name, `--midi-port` can be omitted:
 
 ```powershell
-py -m windows.win_recv --map config/windows_midi_map.json --verbose
+py -m windows.win_recv --map config/windows_midi_map.json --feedback-port "DECK_OUT" --verbose
 ```
 
 ## 5. Point Resolume at the Same Port
@@ -64,14 +74,16 @@ py -m windows.win_recv --map config/windows_midi_map.json --verbose
 In Resolume MIDI preferences:
 
 - Enable MIDI input on `DECK_IN`
-- Disable MIDI output on this port
+- Leave MIDI output disabled on `DECK_IN`
+- For only the mappings that need cache/state feedback, set MIDI output to `DECK_OUT`
 
 Do not enable Resolume MIDI output on `DECK_IN`.
 
 ## Notes
 
 - Keep `loopMIDI` running before starting the receiver.
-- The receiver opens only a MIDI output to `DECK_IN`; it does not subscribe to MIDI input.
+- `--feedback-port` is optional. Without it, the receiver behaves as output-only.
+- Current feedback/cache handling applies to tracked `macro_cc` parameters.
 - If the port name is wrong, the receiver will print the available indexed port list.
 - The receiver accepts a unique port prefix, so `DECK_IN` can resolve `DECK_IN 1`.
 - For initial testing, keep the example mappings in `config/windows_midi_map.json`.

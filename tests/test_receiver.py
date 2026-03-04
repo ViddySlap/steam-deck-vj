@@ -4,7 +4,7 @@ import unittest
 
 from windows.config import MacroCCMapping, MacroSettings, NoteMapping
 from windows.receiver import ActionReceiver
-from windows.midi import MidiError
+from windows.midi import MidiControlChange, MidiError
 from protocol.messages import encode_heartbeat_event
 
 
@@ -382,3 +382,131 @@ class ActionReceiverTests(unittest.TestCase):
                 ("cc", 0, 21, 127),
             ],
         )
+
+    def test_feedback_updates_cached_macro_value(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "DPAD_DOWN": MacroCCMapping(
+                    action="DPAD_DOWN",
+                    kind="macro_cc",
+                    channel=0,
+                    cc=20,
+                    gesture="click",
+                )
+            },
+            timeout_seconds=1.0,
+        )
+
+        handled = receiver.handle_midi_feedback(0, 20, 64, now=0.0)
+
+        self.assertTrue(handled)
+        self.assertEqual(receiver._macro_values[(0, 20)], 64)
+        self.assertEqual(self.midi.calls, [])
+
+    def test_feedback_ignores_untracked_cc(self) -> None:
+        handled = self.receiver.handle_midi_feedback(0, 20, 64, now=0.0)
+
+        self.assertFalse(handled)
+        self.assertEqual(self.receiver._macro_values, {})
+
+    def test_matching_feedback_is_ignored_while_fade_is_active(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "DPAD_DOWN_LONG_PRESS": MacroCCMapping(
+                    action="DPAD_DOWN_LONG_PRESS",
+                    kind="macro_cc",
+                    channel=0,
+                    cc=20,
+                    gesture="long_press",
+                )
+            },
+            timeout_seconds=1.0,
+            macro_settings=MacroSettings(fade_duration_seconds=2.0, update_hz=10),
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"DPAD_DOWN_LONG_PRESS","state":"down","seq":1}',
+            self.addr,
+            now=0.0,
+        )
+        receiver.advance_fades(now=1.0)
+
+        handled = receiver.handle_midi_feedback(0, 20, 64, now=1.0)
+
+        self.assertFalse(handled)
+        self.assertIn((0, 20), receiver._active_macro_fades)
+        self.assertEqual(receiver._macro_values[(0, 20)], 64)
+
+    def test_non_matching_feedback_cancels_active_fade_as_manual_override(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "DPAD_DOWN_LONG_PRESS": MacroCCMapping(
+                    action="DPAD_DOWN_LONG_PRESS",
+                    kind="macro_cc",
+                    channel=0,
+                    cc=20,
+                    gesture="long_press",
+                )
+            },
+            timeout_seconds=1.0,
+            macro_settings=MacroSettings(fade_duration_seconds=2.0, update_hz=10),
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"DPAD_DOWN_LONG_PRESS","state":"down","seq":1}',
+            self.addr,
+            now=0.0,
+        )
+        receiver.advance_fades(now=1.0)
+
+        handled = receiver.handle_midi_feedback(0, 20, 90, now=1.0)
+        receiver.advance_fades(now=2.0)
+
+        self.assertTrue(handled)
+        self.assertNotIn((0, 20), receiver._active_macro_fades)
+        self.assertEqual(receiver._macro_values[(0, 20)], 90)
+        self.assertEqual(self.midi.calls, [("cc", 0, 20, 0), ("cc", 0, 20, 64)])
+
+
+class ServeForeverFeedbackTests(unittest.TestCase):
+    def test_drains_feedback_messages(self) -> None:
+        midi = FakeMidiOut()
+        receiver = ActionReceiver(
+            midi,
+            {
+                "DPAD_DOWN": MacroCCMapping(
+                    action="DPAD_DOWN",
+                    kind="macro_cc",
+                    channel=0,
+                    cc=20,
+                    gesture="click",
+                )
+            },
+        )
+
+        class FakeMidiIn:
+            def poll_control_changes(self) -> list[MidiControlChange]:
+                if hasattr(self, "_used"):
+                    return []
+                self._used = True
+                return [MidiControlChange(channel=0, control=20, value=99)]
+
+            def close(self) -> None:
+                return None
+
+            @property
+            def port_name(self) -> str:
+                return "DECK_OUT"
+
+            @property
+            def port_index(self) -> int | None:
+                return 0
+
+        from windows.receiver import _drain_midi_feedback
+
+        _drain_midi_feedback(receiver, FakeMidiIn())
+
+        self.assertEqual(receiver._macro_values[(0, 20)], 99)

@@ -17,7 +17,7 @@ from windows.config import (
     MidiMapping,
     NoteMapping,
 )
-from windows.midi import MidiError, MidiOut
+from windows.midi import MidiControlChange, MidiError, MidiIn, MidiOut
 
 
 LOGGER = logging.getLogger(__name__)
@@ -71,6 +71,11 @@ class ActionReceiver:
         self._loop_guard_until = 0.0
         self._macro_values: dict[tuple[int, int], int] = {}
         self._active_macro_fades: dict[tuple[int, int], ActiveMacroFade] = {}
+        self._tracked_macro_keys = {
+            (mapping.channel, mapping.cc)
+            for mapping in mappings.values()
+            if isinstance(mapping, MacroCCMapping)
+        }
 
     @property
     def fade_poll_interval_seconds(self) -> float | None:
@@ -163,6 +168,49 @@ class ActionReceiver:
 
             if progress >= 1.0:
                 self._active_macro_fades.pop(key, None)
+
+    def handle_midi_feedback(
+        self,
+        channel: int,
+        cc: int,
+        value: int,
+        *,
+        now: float | None = None,
+    ) -> bool:
+        key = (channel, cc)
+        if key not in self._tracked_macro_keys:
+            return False
+
+        timestamp = self._clock() if now is None else now
+        fade = self._active_macro_fades.get(key)
+        if fade is not None:
+            expected_value = self._fade_value_at(fade, timestamp)
+            current_value = self._macro_values.get(key)
+            if value == expected_value or value == current_value:
+                LOGGER.debug(
+                    "ignored feedback for active fade channel=%s cc=%s value=%s",
+                    channel,
+                    cc,
+                    value,
+                )
+                return False
+
+            LOGGER.info(
+                "manual override detected; canceling fade channel=%s cc=%s value=%s",
+                channel,
+                cc,
+                value,
+            )
+            self._active_macro_fades.pop(key, None)
+
+        self._macro_values[key] = value
+        LOGGER.debug(
+            "updated macro cache from feedback channel=%s cc=%s value=%s",
+            channel,
+            cc,
+            value,
+        )
+        return True
 
     def _allow_event(self, event: ActionEvent, timestamp: float) -> bool:
         if timestamp < self._loop_guard_until:
@@ -290,6 +338,13 @@ class ActionReceiver:
             return self._macro_settings.min_value
         return self._macro_settings.max_value
 
+    def _fade_value_at(self, fade: ActiveMacroFade, timestamp: float) -> int:
+        elapsed = max(0.0, timestamp - fade.start_time)
+        progress = min(1.0, elapsed / fade.duration_seconds)
+        return round(
+            fade.start_value + (fade.target_value - fade.start_value) * progress
+        )
+
     def _send_macro_value(self, channel: int, cc: int, value: int) -> None:
         self._midi_out.control_change(channel, cc, value)
         self._macro_values[(channel, cc)] = value
@@ -300,24 +355,34 @@ def serve_forever(
     listen_port: int,
     receiver: ActionReceiver,
     *,
+    midi_in: MidiIn | None = None,
     poll_interval: float = 0.25,
 ) -> None:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((listen_host, listen_port))
 
     LOGGER.info("listening on udp://%s:%s", listen_host, listen_port)
+    if midi_in is not None:
+        LOGGER.info(
+            "listening for MIDI feedback: name=%s index=%s",
+            midi_in.port_name,
+            midi_in.port_index if midi_in.port_index is not None else "n/a",
+        )
     try:
         while True:
+            _drain_midi_feedback(receiver, midi_in)
             try:
                 fade_poll = receiver.fade_poll_interval_seconds
                 timeout = poll_interval if fade_poll is None else min(poll_interval, fade_poll)
                 sock.settimeout(timeout)
                 payload, addr = sock.recvfrom(4096)
             except socket.timeout:
+                _drain_midi_feedback(receiver, midi_in)
                 receiver.advance_fades()
                 receiver.check_timeouts()
                 continue
             receiver.handle_datagram(payload, addr)
+            _drain_midi_feedback(receiver, midi_in)
             receiver.advance_fades()
             receiver.check_timeouts()
     except KeyboardInterrupt:
@@ -325,3 +390,28 @@ def serve_forever(
     finally:
         receiver.release_all()
         sock.close()
+        if midi_in is not None:
+            midi_in.close()
+
+
+def _drain_midi_feedback(receiver: ActionReceiver, midi_in: MidiIn | None) -> None:
+    if midi_in is None:
+        return
+    for message in midi_in.poll_control_changes():
+        _handle_feedback_message(receiver, message)
+
+
+def _handle_feedback_message(receiver: ActionReceiver, message: MidiControlChange) -> None:
+    try:
+        receiver.handle_midi_feedback(
+            message.channel,
+            message.control,
+            message.value,
+        )
+    except Exception:
+        LOGGER.exception(
+            "failed to process MIDI feedback channel=%s cc=%s value=%s",
+            message.channel,
+            message.control,
+            message.value,
+        )

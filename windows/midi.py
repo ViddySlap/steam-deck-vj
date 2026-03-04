@@ -1,4 +1,4 @@
-"""MIDI output abstractions for the Windows receiver."""
+"""MIDI input/output abstractions for the Windows receiver."""
 
 from __future__ import annotations
 
@@ -14,6 +14,12 @@ class MidiError(RuntimeError):
 class MidiPortSnapshot(NamedTuple):
     input_names: list[str]
     output_names: list[str]
+
+
+class MidiControlChange(NamedTuple):
+    channel: int
+    control: int
+    value: int
 
 
 class MidiOut:
@@ -38,6 +44,24 @@ class MidiOut:
 
     def panic(self) -> None:
         """Send a conservative reset where supported."""
+
+    def close(self) -> None:
+        """Release backend resources if needed."""
+
+
+class MidiIn:
+    """Abstract MIDI input interface."""
+
+    @property
+    def port_name(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def port_index(self) -> int | None:
+        return None
+
+    def poll_control_changes(self) -> list[MidiControlChange]:
+        raise NotImplementedError
 
     def close(self) -> None:
         """Release backend resources if needed."""
@@ -69,6 +93,25 @@ class DryRunMidiOut(MidiOut):
 
     def panic(self) -> None:
         print("MIDI panic")
+
+
+@dataclass
+class DryRunMidiIn(MidiIn):
+    """A no-op MIDI input backend."""
+
+    selected_port_name: str = "dry-run"
+    selected_port_index: int | None = None
+
+    @property
+    def port_name(self) -> str:
+        return self.selected_port_name
+
+    @property
+    def port_index(self) -> int | None:
+        return self.selected_port_index
+
+    def poll_control_changes(self) -> list[MidiControlChange]:
+        return []
 
 
 class MidoMidiOut(MidiOut):
@@ -137,12 +180,64 @@ class MidoMidiOut(MidiOut):
         self._port.close()
 
 
+class MidoMidiIn(MidiIn):
+    """Optional `mido`-based MIDI input implementation."""
+
+    def __init__(self, port_name: str):
+        try:
+            import mido
+        except ImportError as exc:
+            raise MidiError(
+                "mido is not installed; use --dry-run or install a MIDI backend"
+            ) from exc
+
+        available = get_input_port_names()
+        resolved_port_name = resolve_input_port_name(port_name, available)
+
+        self._port = mido.open_input(resolved_port_name)
+        self._port_index = available.index(resolved_port_name)
+        self._port_name = resolved_port_name
+
+    @property
+    def port_name(self) -> str:
+        return self._port_name
+
+    @property
+    def port_index(self) -> int | None:
+        return self._port_index
+
+    def poll_control_changes(self) -> list[MidiControlChange]:
+        messages: list[MidiControlChange] = []
+        for message in self._port.iter_pending():
+            if message.type != "control_change":
+                continue
+            messages.append(
+                MidiControlChange(
+                    channel=int(message.channel),
+                    control=int(message.control),
+                    value=int(message.value),
+                )
+            )
+        return messages
+
+    def close(self) -> None:
+        self._port.close()
+
+
 def open_midi_output(port_name: str | None, dry_run: bool) -> MidiOut:
     if dry_run:
         return DryRunMidiOut(selected_port_name=port_name or "dry-run")
     if not port_name:
         raise MidiError("a MIDI port name is required unless --dry-run is enabled")
     return MidoMidiOut(port_name)
+
+
+def open_midi_input(port_name: str | None, dry_run: bool) -> MidiIn | None:
+    if not port_name:
+        return None
+    if dry_run:
+        return DryRunMidiIn(selected_port_name=port_name)
+    return MidoMidiIn(port_name)
 
 
 def get_output_port_names() -> list[str]:
@@ -178,11 +273,19 @@ def resolve_available_output_port_name(port_name: str) -> str:
     return resolve_output_port_name(port_name, get_output_port_names())
 
 
+def resolve_available_input_port_name(port_name: str) -> str:
+    return resolve_input_port_name(port_name, get_input_port_names())
+
+
 def list_output_ports(names: Sequence[str]) -> list[str]:
     return list(names)
 
 
 def resolve_output_port_name(port_name: str, names: Sequence[str]) -> str:
+    return resolve_input_port_name(port_name, names)
+
+
+def resolve_input_port_name(port_name: str, names: Sequence[str]) -> str:
     available = list_output_ports(names)
     if port_name in available:
         return port_name

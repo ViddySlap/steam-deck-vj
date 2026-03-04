@@ -8,8 +8,11 @@ from windows.midi import (
     MidiError,
     get_input_port_names,
     get_output_port_names,
+    open_midi_input,
     get_port_snapshot,
+    resolve_available_input_port_name,
     resolve_available_output_port_name,
+    resolve_input_port_name,
     resolve_output_port_name,
 )
 
@@ -63,3 +66,23 @@ class ResolveOutputPortNameTests(unittest.TestCase):
             "windows.midi.get_output_port_names", return_value=["DECK_IN 1", "OTHER"]
         ):
             self.assertEqual(resolve_available_output_port_name("DECK_IN"), "DECK_IN 1")
+
+    def test_resolve_input_port_name_returns_unique_prefix_match(self) -> None:
+        resolved = resolve_input_port_name("DECK_OUT", ["DECK_IN 1", "DECK_OUT 2"])
+        self.assertEqual(resolved, "DECK_OUT 2")
+
+    def test_resolve_available_input_port_name_uses_live_port_list(self) -> None:
+        with mock.patch(
+            "windows.midi.get_input_port_names", return_value=["DECK_OUT 2", "OTHER"]
+        ):
+            self.assertEqual(resolve_available_input_port_name("DECK_OUT"), "DECK_OUT 2")
+
+    def test_open_midi_input_returns_none_without_port_name(self) -> None:
+        self.assertIsNone(open_midi_input(None, dry_run=False))
+
+    def test_open_midi_input_returns_dry_run_backend(self) -> None:
+        midi_in = open_midi_input("DECK_OUT", dry_run=True)
+
+        assert midi_in is not None
+        self.assertEqual(midi_in.port_name, "DECK_OUT")
+        self.assertEqual(midi_in.poll_control_changes(), [])

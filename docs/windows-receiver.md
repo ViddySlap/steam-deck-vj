@@ -7,6 +7,9 @@ This first implementation slice provides:
 - per-sender sequence filtering for out-of-order packets
 - action-to-MIDI mapping from `config/windows_midi_map.json`
 - timeout and shutdown failsafes that release active notes/controls
+- optional MIDI feedback input on a separate port such as `DECK_OUT`
+- receiver-side cache for tracked `macro_cc` parameters
+- manual Resolume override for active fades when inbound feedback diverges
 
 ## Message Format
 
@@ -63,6 +66,11 @@ Supported mapping types:
 the configured min/max values, while a long press starts a receiver-side linear fade to the opposite
 value and continues to completion even after button release.
 
+Tracked `macro_cc` parameters are also the current feedback/cache subset. When `--feedback-port` is
+configured, inbound CC feedback on the same channel/CC updates the cache. During an active fade, the
+receiver ignores matching feedback values but cancels the fade if Resolume reports a different value,
+so manual movement in Resolume wins over automation.
+
 ## Running
 
 Dry-run mode works in WSL and logs the MIDI events that would be sent:
@@ -82,15 +90,20 @@ For real Windows MIDI output, install a `mido`-compatible backend on Windows and
 ```bash
 py -m pip install -r requirements.txt
 py -m windows.list_midi_ports
-py -m windows.win_recv --map config/windows_midi_map.json --midi-port "DECK_IN" --verbose
+py -m windows.win_recv --map config/windows_midi_map.json --midi-port "DECK_IN" --feedback-port "DECK_OUT" --verbose
 ```
 
-The Windows receiver opens only a MIDI output port. It does not subscribe to MIDI input.
-Use `DECK_IN` for bridge output into Resolume, and leave Resolume MIDI output on that port disabled.
+Use separate loopMIDI ports for each direction:
+
+- `DECK_IN`: receiver output into Resolume MIDI input
+- `DECK_OUT`: Resolume MIDI output back into the receiver for selected feedback-enabled mappings
+
+Do not point Resolume MIDI output back at `DECK_IN`.
 
 ## Limitations
 
 - WSL cannot fully validate Windows MIDI port behavior.
 - Sequence handling currently assumes monotonically increasing integer counters.
 - A receiver-side loop guard drops ultra-fast duplicate events and temporarily mutes output if the incoming event rate spikes abnormally.
+- Startup cache initialization from inbound feedback is not implemented.
 - Real MIDI output must be validated on Windows proper with loopMIDI or another visible output port.

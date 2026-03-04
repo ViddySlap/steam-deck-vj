@@ -9,9 +9,10 @@ import sys
 from windows.config import ConfigError, load_midi_map
 from windows.midi import (
     MidiError,
-    format_output_port_list,
     get_output_port_names,
+    open_midi_input,
     open_midi_output,
+    resolve_available_input_port_name,
     resolve_available_output_port_name,
 )
 from windows.receiver import ActionReceiver, serve_forever
@@ -28,6 +29,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--midi-port",
         default="DECK_IN",
         help='Windows MIDI output port name (default: "DECK_IN")',
+    )
+    parser.add_argument(
+        "--feedback-port",
+        help='Windows MIDI input port name for Resolume feedback (example: "DECK_OUT")',
     )
     parser.add_argument(
         "--map",
@@ -89,6 +94,14 @@ def main(argv: list[str] | None = None) -> int:
                 "MIDI output port is available:"
                 f" requested={args.midi_port} resolved={resolved_port_name}"
             )
+            if args.feedback_port:
+                resolved_feedback_port = resolve_available_input_port_name(
+                    args.feedback_port
+                )
+                print(
+                    "MIDI input port is available:"
+                    f" requested={args.feedback_port} resolved={resolved_feedback_port}"
+                )
             return 0
 
         if not args.map_path:
@@ -97,6 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         listen_host, listen_port = parse_listen(args.listen)
         receiver_config = load_midi_map(args.map_path)
         midi_out = open_midi_output(args.midi_port, args.dry_run)
+        midi_in = open_midi_input(args.feedback_port, args.dry_run)
     except (argparse.ArgumentTypeError, ConfigError, MidiError) as exc:
         parser.error(str(exc))
         return 2
@@ -106,6 +120,12 @@ def main(argv: list[str] | None = None) -> int:
         midi_out.port_name,
         midi_out.port_index if midi_out.port_index is not None else "n/a",
     )
+    if midi_in is not None:
+        logging.info(
+            "selected MIDI input feedback port: name=%s index=%s",
+            midi_in.port_name,
+            midi_in.port_index if midi_in.port_index is not None else "n/a",
+        )
 
     receiver = ActionReceiver(
         midi_out,
@@ -114,7 +134,7 @@ def main(argv: list[str] | None = None) -> int:
         macro_settings=receiver_config.macro_settings,
     )
     try:
-        serve_forever(listen_host, listen_port, receiver)
+        serve_forever(listen_host, listen_port, receiver, midi_in=midi_in)
     finally:
         midi_out.close()
     return 0

@@ -46,6 +46,7 @@ class LoadMidiMapTests(unittest.TestCase):
                                 "velocity": 120,
                                 "modifier_channel": 1,
                                 "trigger_channel": 2,
+                                "refresh_actions": ["L_PAD_LEFT", "L_PAD_RIGHT"],
                             },
                         }
                     }
@@ -63,6 +64,10 @@ class LoadMidiMapTests(unittest.TestCase):
         self.assertIsInstance(config.mappings["DPAD_UP_LONG_PRESS"], MacroCCMapping)
         self.assertIsInstance(config.mappings["R_PAD_RIGHT"], RelativeCCMapping)
         self.assertIsInstance(config.mappings["L_PAD_LEFT_LONG_PRESS"], StagedNoteMacroMapping)
+        self.assertEqual(
+            config.mappings["L_PAD_LEFT_LONG_PRESS"].refresh_actions,
+            ("L_PAD_LEFT", "L_PAD_RIGHT"),
+        )
 
     def test_rejects_missing_mappings_object(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

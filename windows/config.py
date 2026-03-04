@@ -72,6 +72,7 @@ class StagedNoteMacroMapping:
     modifier_channel: int = 0
     trigger_channel: int = 1
     velocity: int = 127
+    refresh_actions: tuple[str, ...] = ()
 
 
 MidiMapping = (
@@ -207,6 +208,7 @@ def _parse_mapping(action: str, spec: dict[str, object]) -> MidiMapping:
         velocity = _read_byte(spec, "velocity", default=127)
         modifier_channel = _read_byte(spec, "modifier_channel", maximum=15, default=0)
         trigger_channel = _read_byte(spec, "trigger_channel", maximum=15, default=1)
+        refresh_actions = _read_string_list(spec, "refresh_actions", default=[])
         if modifier_channel == trigger_channel:
             raise ConfigError(
                 f"mapping for {action} must use different modifier_channel and trigger_channel"
@@ -218,6 +220,7 @@ def _parse_mapping(action: str, spec: dict[str, object]) -> MidiMapping:
             modifier_channel=modifier_channel,
             trigger_channel=trigger_channel,
             velocity=velocity,
+            refresh_actions=tuple(refresh_actions),
         )
     raise ConfigError(
         "mapping for"
@@ -269,3 +272,15 @@ def _read_positive_int(
     if value <= 0:
         raise ConfigError(f"{key} must be greater than 0")
     return value
+
+
+def _read_string_list(
+    spec: dict[str, object],
+    key: str,
+    *,
+    default: list[str],
+) -> list[str]:
+    value = spec.get(key, default)
+    if not isinstance(value, list) or not all(isinstance(item, str) and item for item in value):
+        raise ConfigError(f"{key} must be a list of non-empty strings")
+    return list(value)

@@ -630,6 +630,7 @@ class ActionReceiverTests(unittest.TestCase):
                     modifier_channel=0,
                     trigger_channel=1,
                     velocity=127,
+                    refresh_actions=("L_PAD_LEFT", "L_PAD_RIGHT"),
                 )
             },
             timeout_seconds=1.0,
@@ -667,6 +668,7 @@ class ActionReceiverTests(unittest.TestCase):
                     modifier_channel=0,
                     trigger_channel=1,
                     velocity=127,
+                    refresh_actions=("L_PAD_LEFT", "L_PAD_RIGHT"),
                 )
             },
             timeout_seconds=1.0,
@@ -697,6 +699,78 @@ class ActionReceiverTests(unittest.TestCase):
                 ("note_on", 0, 87, 127),
                 ("note_on", 1, 87, 127),
                 ("note_off", 0, 87, 0),
+            ],
+        )
+
+    def test_staged_note_macro_refreshes_hold_on_left_or_right_click(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "L_PAD_LEFT": NoteMapping(
+                    action="L_PAD_LEFT",
+                    kind="note",
+                    channel=0,
+                    note=82,
+                ),
+                "L_PAD_RIGHT": NoteMapping(
+                    action="L_PAD_RIGHT",
+                    kind="note",
+                    channel=0,
+                    note=83,
+                ),
+                "L_PAD_LEFT_LONG_PRESS": StagedNoteMacroMapping(
+                    action="L_PAD_LEFT_LONG_PRESS",
+                    kind="staged_note_macro",
+                    note=86,
+                    modifier_channel=0,
+                    trigger_channel=1,
+                    velocity=127,
+                    refresh_actions=("L_PAD_LEFT", "L_PAD_RIGHT"),
+                ),
+            },
+            timeout_seconds=1.0,
+            macro_settings=MacroSettings(macro_delay_ms=80, modifier_hold_ms=2000),
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"L_PAD_LEFT_LONG_PRESS","state":"down","seq":1}',
+            self.addr,
+            now=0.0,
+        )
+        receiver.advance_staged_note_macros(now=0.08)
+        receiver.handle_datagram(
+            b'{"action":"L_PAD_RIGHT","state":"down","seq":2}',
+            self.addr,
+            now=1.0,
+        )
+        receiver.handle_datagram(
+            b'{"action":"L_PAD_RIGHT","state":"up","seq":3}',
+            self.addr,
+            now=1.1,
+        )
+        receiver.handle_datagram(
+            b'{"action":"L_PAD_LEFT","state":"down","seq":4}',
+            self.addr,
+            now=2.0,
+        )
+        receiver.handle_datagram(
+            b'{"action":"L_PAD_LEFT","state":"up","seq":5}',
+            self.addr,
+            now=2.1,
+        )
+        receiver.advance_staged_note_macros(now=3.9)
+        receiver.advance_staged_note_macros(now=4.1)
+
+        self.assertEqual(
+            self.midi.calls,
+            [
+                ("note_on", 0, 86, 127),
+                ("note_on", 1, 86, 127),
+                ("note_on", 0, 83, 127),
+                ("note_off", 0, 83, 0),
+                ("note_on", 0, 82, 127),
+                ("note_off", 0, 82, 0),
+                ("note_off", 0, 86, 0),
             ],
         )
 

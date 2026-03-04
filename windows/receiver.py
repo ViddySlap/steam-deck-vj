@@ -60,6 +60,7 @@ class ActiveStagedNoteMacro:
     velocity: int
     trigger_time: float
     off_time: float
+    refresh_actions: frozenset[str]
     trigger_sent: bool = False
 
 
@@ -150,6 +151,7 @@ class ActionReceiver:
             return True
         if not self._allow_event(event, timestamp):
             return False
+        self._refresh_staged_note_macros(event.action, timestamp)
         try:
             return self._dispatch_event(event, timestamp)
         except MidiError as exc:
@@ -480,8 +482,28 @@ class ActionReceiver:
             velocity=mapping.velocity,
             trigger_time=timestamp + (self._macro_settings.macro_delay_ms / 1000.0),
             off_time=timestamp + (self._macro_settings.modifier_hold_ms / 1000.0),
+            refresh_actions=frozenset(mapping.refresh_actions),
         )
         return True
+
+    def _refresh_staged_note_macros(self, action: str, timestamp: float) -> None:
+        if not self._active_staged_note_macros:
+            return
+
+        refreshed = False
+        extension = self._macro_settings.modifier_hold_ms / 1000.0
+        for active in self._active_staged_note_macros.values():
+            if action not in active.refresh_actions:
+                continue
+            active.off_time = timestamp + extension
+            refreshed = True
+
+        if refreshed:
+            LOGGER.debug(
+                "refreshed staged modifier hold from action=%s until=%.3f",
+                action,
+                timestamp + extension,
+            )
 
     def _toggle_target(self, current_value: int) -> int:
         midpoint = (self._macro_settings.min_value + self._macro_settings.max_value) / 2

@@ -313,14 +313,16 @@
       "note": 86,
       "velocity": 127,
       "modifier_channel": 0,
-      "trigger_channel": 1
+      "trigger_channel": 1,
+      "refresh_actions": ["L_PAD_LEFT", "L_PAD_RIGHT"]
     },
     "L_PAD_RIGHT_LONG_PRESS": {
       "type": "staged_note_macro",
       "note": 87,
       "velocity": 127,
       "modifier_channel": 0,
-      "trigger_channel": 1
+      "trigger_channel": 1,
+      "refresh_actions": ["L_PAD_LEFT", "L_PAD_RIGHT"]
     },
     "R_PAD_UP": {
       "type": "note",

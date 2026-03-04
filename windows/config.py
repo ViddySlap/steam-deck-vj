@@ -18,6 +18,8 @@ class MacroSettings:
     min_value: int = 0
     max_value: int = 127
     feedback_match_tolerance: int = 2
+    macro_delay_ms: int = 80
+    modifier_hold_ms: int = 2000
 
     @property
     def step_interval_seconds(self) -> float:
@@ -63,17 +65,21 @@ class RelativeCCMapping:
 
 
 @dataclass(frozen=True)
-class TimedNoteMapping:
+class StagedNoteMacroMapping:
     action: str
     kind: str
-    channel: int
     note: int
+    modifier_channel: int = 0
+    trigger_channel: int = 1
     velocity: int = 127
-    hold_seconds: float = 2.0
 
 
 MidiMapping = (
-    NoteMapping | ControlChangeMapping | MacroCCMapping | RelativeCCMapping | TimedNoteMapping
+    NoteMapping
+    | ControlChangeMapping
+    | MacroCCMapping
+    | RelativeCCMapping
+    | StagedNoteMacroMapping
 )
 
 
@@ -126,6 +132,8 @@ def _parse_macro_settings(spec: object) -> MacroSettings:
         "feedback_match_tolerance",
         default=2,
     )
+    macro_delay_ms = _read_positive_int(spec, "macro_delay_ms", default=80)
+    modifier_hold_ms = _read_positive_int(spec, "modifier_hold_ms", default=2000)
     if min_value >= max_value:
         raise ConfigError("macro_settings min_value must be less than max_value")
 
@@ -135,6 +143,8 @@ def _parse_macro_settings(spec: object) -> MacroSettings:
         min_value=min_value,
         max_value=max_value,
         feedback_match_tolerance=feedback_match_tolerance,
+        macro_delay_ms=macro_delay_ms,
+        modifier_hold_ms=modifier_hold_ms,
     )
 
 
@@ -192,22 +202,28 @@ def _parse_mapping(action: str, spec: dict[str, object]) -> MidiMapping:
             step_value=step_value,
             repeat_interval_ms=repeat_interval_ms,
         )
-    if kind == "timed_note":
-        channel = _read_byte(spec, "channel", maximum=15, default=0)
+    if kind == "staged_note_macro":
         note = _read_byte(spec, "note")
         velocity = _read_byte(spec, "velocity", default=127)
-        hold_seconds = _read_positive_number(spec, "hold_seconds", default=2.0)
-        return TimedNoteMapping(
+        modifier_channel = _read_byte(spec, "modifier_channel", maximum=15, default=0)
+        trigger_channel = _read_byte(spec, "trigger_channel", maximum=15, default=1)
+        if modifier_channel == trigger_channel:
+            raise ConfigError(
+                f"mapping for {action} must use different modifier_channel and trigger_channel"
+            )
+        return StagedNoteMacroMapping(
             action=action,
-            kind="timed_note",
-            channel=channel,
+            kind="staged_note_macro",
             note=note,
+            modifier_channel=modifier_channel,
+            trigger_channel=trigger_channel,
             velocity=velocity,
-            hold_seconds=hold_seconds,
         )
     raise ConfigError(
         "mapping for"
-        f" {action} must have type 'note', 'cc', 'macro_cc', 'relative_cc', or 'timed_note'"
+        " "
+        f"{action} must have type 'note', 'cc', 'macro_cc', 'relative_cc', or"
+        " 'staged_note_macro'"
     )
 
 

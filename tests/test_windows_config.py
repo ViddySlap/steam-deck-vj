@@ -11,7 +11,7 @@ from windows.config import (
     MacroCCMapping,
     NoteMapping,
     RelativeCCMapping,
-    TimedNoteMapping,
+    StagedNoteMacroMapping,
     load_midi_map,
 )
 
@@ -41,11 +41,11 @@ class LoadMidiMapTests(unittest.TestCase):
                                 "repeat_interval_ms": 40,
                             },
                             "L_PAD_LEFT_LONG_PRESS": {
-                                "type": "timed_note",
-                                "channel": 1,
+                                "type": "staged_note_macro",
                                 "note": 86,
                                 "velocity": 120,
-                                "hold_seconds": 2.0,
+                                "modifier_channel": 1,
+                                "trigger_channel": 2,
                             },
                         }
                     }
@@ -56,11 +56,13 @@ class LoadMidiMapTests(unittest.TestCase):
 
         self.assertEqual(config.macro_settings.fade_duration_seconds, 1.5)
         self.assertEqual(config.macro_settings.update_hz, 20)
+        self.assertEqual(config.macro_settings.macro_delay_ms, 80)
+        self.assertEqual(config.macro_settings.modifier_hold_ms, 2000)
         self.assertIsInstance(config.mappings["BTN_A"], NoteMapping)
         self.assertIsInstance(config.mappings["DPAD_UP"], ControlChangeMapping)
         self.assertIsInstance(config.mappings["DPAD_UP_LONG_PRESS"], MacroCCMapping)
         self.assertIsInstance(config.mappings["R_PAD_RIGHT"], RelativeCCMapping)
-        self.assertIsInstance(config.mappings["L_PAD_LEFT_LONG_PRESS"], TimedNoteMapping)
+        self.assertIsInstance(config.mappings["L_PAD_LEFT_LONG_PRESS"], StagedNoteMacroMapping)
 
     def test_rejects_missing_mappings_object(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

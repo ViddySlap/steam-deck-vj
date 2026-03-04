@@ -3,7 +3,9 @@
     "fade_duration_seconds": 2.0,
     "update_hz": 30,
     "min_value": 0,
-    "max_value": 127
+    "max_value": 127,
+    "macro_delay_ms": 80,
+    "modifier_hold_ms": 2000
   },
   "mappings": {
     "BTN_A": {
@@ -307,18 +309,18 @@
       "velocity": 127
     },
     "L_PAD_LEFT_LONG_PRESS": {
-      "type": "timed_note",
-      "channel": 0,
+      "type": "staged_note_macro",
       "note": 86,
       "velocity": 127,
-      "hold_seconds": 2.0
+      "modifier_channel": 0,
+      "trigger_channel": 1
     },
     "L_PAD_RIGHT_LONG_PRESS": {
-      "type": "timed_note",
-      "channel": 0,
+      "type": "staged_note_macro",
       "note": 87,
       "velocity": 127,
-      "hold_seconds": 2.0
+      "modifier_channel": 0,
+      "trigger_channel": 1
     },
     "R_PAD_UP": {
       "type": "note",

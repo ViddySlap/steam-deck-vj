@@ -17,7 +17,7 @@ from windows.config import (
     MidiMapping,
     NoteMapping,
     RelativeCCMapping,
-    TimedNoteMapping,
+    StagedNoteMacroMapping,
 )
 from windows.midi import MidiControlChange, MidiError, MidiIn, MidiOut
 
@@ -52,11 +52,15 @@ class ActiveRelativeCC:
 
 
 @dataclass
-class ActiveTimedNote:
+class ActiveStagedNoteMacro:
     action: str
-    channel: int
+    modifier_channel: int
+    trigger_channel: int
     note: int
+    velocity: int
+    trigger_time: float
     off_time: float
+    trigger_sent: bool = False
 
 
 class ActionReceiver:
@@ -92,7 +96,7 @@ class ActionReceiver:
         self._macro_values: dict[tuple[int, int], int] = {}
         self._active_macro_fades: dict[tuple[int, int], ActiveMacroFade] = {}
         self._active_relative_ccs: dict[str, ActiveRelativeCC] = {}
-        self._active_timed_notes: dict[str, ActiveTimedNote] = {}
+        self._active_staged_note_macros: dict[str, ActiveStagedNoteMacro] = {}
         self._tracked_macro_keys = {
             (mapping.channel, mapping.cc)
             for mapping in mappings.values()
@@ -108,7 +112,7 @@ class ActionReceiver:
             intervals.extend(
                 active.repeat_interval_seconds for active in self._active_relative_ccs.values()
             )
-        if self._active_timed_notes:
+        if self._active_staged_note_macros:
             intervals.append(0.01)
         if not intervals:
             return None
@@ -120,7 +124,7 @@ class ActionReceiver:
         timestamp = self._clock() if now is None else now
         self.advance_fades(now=timestamp)
         self.advance_relative_ccs(now=timestamp)
-        self.advance_timed_notes(now=timestamp)
+        self.advance_staged_note_macros(now=timestamp)
 
         try:
             event = parse_action_event(payload)
@@ -157,7 +161,7 @@ class ActionReceiver:
         timestamp = self._clock() if now is None else now
         self.advance_fades(now=timestamp)
         self.advance_relative_ccs(now=timestamp)
-        self.advance_timed_notes(now=timestamp)
+        self.advance_staged_note_macros(now=timestamp)
         if not self._sender_states:
             return False
 
@@ -182,16 +186,16 @@ class ActionReceiver:
         self._active_actions.clear()
         self._active_macro_fades.clear()
         self._active_relative_ccs.clear()
-        for active in list(self._active_timed_notes.values()):
+        for active in list(self._active_staged_note_macros.values()):
             try:
-                self._midi_out.note_off(active.channel, active.note, 0)
+                self._midi_out.note_off(active.modifier_channel, active.note, 0)
             except MidiError as exc:
                 LOGGER.error(
-                    "MIDI output error while releasing timed note %s: %s",
+                    "MIDI output error while releasing staged note macro %s: %s",
                     active.action,
                     exc,
                 )
-        self._active_timed_notes.clear()
+        self._active_staged_note_macros.clear()
         try:
             self._midi_out.panic()
         except MidiError as exc:
@@ -272,16 +276,19 @@ class ActionReceiver:
                 self._midi_out.control_change(active.channel, active.cc, active.step_value)
                 active.next_send_time += active.repeat_interval_seconds
 
-    def advance_timed_notes(self, now: float | None = None) -> None:
+    def advance_staged_note_macros(self, now: float | None = None) -> None:
         timestamp = self._clock() if now is None else now
-        if not self._active_timed_notes or timestamp < self._loop_guard_until:
+        if not self._active_staged_note_macros or timestamp < self._loop_guard_until:
             return
 
-        for action, active in list(self._active_timed_notes.items()):
+        for action, active in list(self._active_staged_note_macros.items()):
+            if not active.trigger_sent and timestamp >= active.trigger_time:
+                self._midi_out.note_on(active.trigger_channel, active.note, active.velocity)
+                active.trigger_sent = True
             if timestamp < active.off_time:
                 continue
-            self._midi_out.note_off(active.channel, active.note, 0)
-            self._active_timed_notes.pop(action, None)
+            self._midi_out.note_off(active.modifier_channel, active.note, 0)
+            self._active_staged_note_macros.pop(action, None)
 
     def _allow_event(self, event: ActionEvent, timestamp: float) -> bool:
         if timestamp < self._loop_guard_until:
@@ -342,8 +349,8 @@ class ActionReceiver:
             if handled:
                 LOGGER.info("action=%s state=%s seq=%s", event.action, event.state, event.seq)
             return handled
-        if isinstance(mapping, TimedNoteMapping):
-            handled = self._handle_timed_note_event(event, mapping, timestamp)
+        if isinstance(mapping, StagedNoteMacroMapping):
+            handled = self._handle_staged_note_macro_event(event, mapping, timestamp)
             if handled:
                 LOGGER.info("action=%s state=%s seq=%s", event.action, event.state, event.seq)
             return handled
@@ -370,8 +377,10 @@ class ActionReceiver:
             raise TypeError("macro mappings must be handled via _handle_macro_event")
         if isinstance(mapping, RelativeCCMapping):
             raise TypeError("relative CC mappings must be handled via _handle_relative_cc_event")
-        if isinstance(mapping, TimedNoteMapping):
-            raise TypeError("timed note mappings must be handled via _handle_timed_note_event")
+        if isinstance(mapping, StagedNoteMacroMapping):
+            raise TypeError(
+                "staged note macro mappings must be handled via _handle_staged_note_macro_event"
+            )
         raise TypeError(f"unsupported mapping type: {type(mapping)!r}")
 
     def _release_mapping(self, action: str, mapping: MidiMapping) -> None:
@@ -387,7 +396,7 @@ class ActionReceiver:
             return
         if isinstance(mapping, RelativeCCMapping):
             return
-        if isinstance(mapping, TimedNoteMapping):
+        if isinstance(mapping, StagedNoteMacroMapping):
             return
         raise TypeError(f"unsupported mapping type: {type(mapping)!r}")
 
@@ -449,25 +458,28 @@ class ActionReceiver:
             if active.channel == channel and active.cc == cc:
                 self._active_relative_ccs.pop(action, None)
 
-    def _handle_timed_note_event(
+    def _handle_staged_note_macro_event(
         self,
         event: ActionEvent,
-        mapping: TimedNoteMapping,
+        mapping: StagedNoteMacroMapping,
         timestamp: float,
     ) -> bool:
         if event.state != "down":
             return True
 
-        existing = self._active_timed_notes.pop(event.action, None)
+        existing = self._active_staged_note_macros.pop(event.action, None)
         if existing is not None:
-            self._midi_out.note_off(existing.channel, existing.note, 0)
+            self._midi_out.note_off(existing.modifier_channel, existing.note, 0)
 
-        self._midi_out.note_on(mapping.channel, mapping.note, mapping.velocity)
-        self._active_timed_notes[event.action] = ActiveTimedNote(
+        self._midi_out.note_on(mapping.modifier_channel, mapping.note, mapping.velocity)
+        self._active_staged_note_macros[event.action] = ActiveStagedNoteMacro(
             action=event.action,
-            channel=mapping.channel,
+            modifier_channel=mapping.modifier_channel,
+            trigger_channel=mapping.trigger_channel,
             note=mapping.note,
-            off_time=timestamp + mapping.hold_seconds,
+            velocity=mapping.velocity,
+            trigger_time=timestamp + (self._macro_settings.macro_delay_ms / 1000.0),
+            off_time=timestamp + (self._macro_settings.modifier_hold_ms / 1000.0),
         )
         return True
 

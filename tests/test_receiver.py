@@ -7,7 +7,7 @@ from windows.config import (
     MacroSettings,
     NoteMapping,
     RelativeCCMapping,
-    TimedNoteMapping,
+    StagedNoteMacroMapping,
 )
 from windows.receiver import ActionReceiver
 from windows.midi import MidiControlChange, MidiError
@@ -619,20 +619,21 @@ class ActionReceiverTests(unittest.TestCase):
             [("cc", 0, 47, 1), ("cc", 0, 47, 1), ("cc", 0, 47, 127), ("cc", 0, 47, 127)],
         )
 
-    def test_timed_note_turns_off_after_fixed_duration(self) -> None:
+    def test_staged_note_macro_sends_modifier_then_delayed_trigger_then_release(self) -> None:
         receiver = ActionReceiver(
             self.midi,
             {
-                "L_PAD_LEFT_LONG_PRESS": TimedNoteMapping(
+                "L_PAD_LEFT_LONG_PRESS": StagedNoteMacroMapping(
                     action="L_PAD_LEFT_LONG_PRESS",
-                    kind="timed_note",
-                    channel=0,
+                    kind="staged_note_macro",
                     note=86,
+                    modifier_channel=0,
+                    trigger_channel=1,
                     velocity=127,
-                    hold_seconds=2.0,
                 )
             },
             timeout_seconds=1.0,
+            macro_settings=MacroSettings(macro_delay_ms=80, modifier_hold_ms=2000),
         )
 
         receiver.handle_datagram(
@@ -645,25 +646,31 @@ class ActionReceiverTests(unittest.TestCase):
             self.addr,
             now=0.1,
         )
-        receiver.advance_timed_notes(now=1.9)
-        receiver.advance_timed_notes(now=2.0)
+        receiver.advance_staged_note_macros(now=0.07)
+        receiver.advance_staged_note_macros(now=0.08)
+        receiver.advance_staged_note_macros(now=1.9)
+        receiver.advance_staged_note_macros(now=2.0)
 
-        self.assertEqual(self.midi.calls, [("note_on", 0, 86, 127), ("note_off", 0, 86, 0)])
+        self.assertEqual(
+            self.midi.calls,
+            [("note_on", 0, 86, 127), ("note_on", 1, 86, 127), ("note_off", 0, 86, 0)],
+        )
 
-    def test_timed_note_retrigger_restarts_timer(self) -> None:
+    def test_staged_note_macro_retrigger_restarts_sequence_and_timer(self) -> None:
         receiver = ActionReceiver(
             self.midi,
             {
-                "L_PAD_RIGHT_LONG_PRESS": TimedNoteMapping(
+                "L_PAD_RIGHT_LONG_PRESS": StagedNoteMacroMapping(
                     action="L_PAD_RIGHT_LONG_PRESS",
-                    kind="timed_note",
-                    channel=0,
+                    kind="staged_note_macro",
                     note=87,
+                    modifier_channel=0,
+                    trigger_channel=1,
                     velocity=127,
-                    hold_seconds=2.0,
                 )
             },
             timeout_seconds=1.0,
+            macro_settings=MacroSettings(macro_delay_ms=80, modifier_hold_ms=2000),
         )
 
         receiver.handle_datagram(
@@ -671,20 +678,24 @@ class ActionReceiverTests(unittest.TestCase):
             self.addr,
             now=0.0,
         )
+        receiver.advance_staged_note_macros(now=0.08)
         receiver.handle_datagram(
             b'{"action":"L_PAD_RIGHT_LONG_PRESS","state":"down","seq":2}',
             self.addr,
             now=1.0,
         )
-        receiver.advance_timed_notes(now=2.5)
-        receiver.advance_timed_notes(now=3.0)
+        receiver.advance_staged_note_macros(now=1.08)
+        receiver.advance_staged_note_macros(now=2.5)
+        receiver.advance_staged_note_macros(now=3.0)
 
         self.assertEqual(
             self.midi.calls,
             [
                 ("note_on", 0, 87, 127),
+                ("note_on", 1, 87, 127),
                 ("note_off", 0, 87, 0),
                 ("note_on", 0, 87, 127),
+                ("note_on", 1, 87, 127),
                 ("note_off", 0, 87, 0),
             ],
         )

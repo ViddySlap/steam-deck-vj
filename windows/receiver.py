@@ -10,7 +10,13 @@ from dataclasses import dataclass
 from typing import Callable
 
 from protocol.messages import ActionEvent, HeartbeatEvent, ProtocolError, parse_action_event
-from windows.config import ControlChangeMapping, MidiMapping, NoteMapping
+from windows.config import (
+    ControlChangeMapping,
+    MacroCCMapping,
+    MacroSettings,
+    MidiMapping,
+    NoteMapping,
+)
 from windows.midi import MidiError, MidiOut
 
 
@@ -23,6 +29,16 @@ class SenderState:
     last_seen: float = 0.0
 
 
+@dataclass
+class ActiveMacroFade:
+    channel: int
+    cc: int
+    start_value: int
+    target_value: int
+    start_time: float
+    duration_seconds: float
+
+
 class ActionReceiver:
     """Receive action messages and emit mapped MIDI output."""
 
@@ -32,6 +48,7 @@ class ActionReceiver:
         mappings: dict[str, MidiMapping],
         *,
         timeout_seconds: float = 2.0,
+        macro_settings: MacroSettings | None = None,
         dedupe_window_seconds: float = 0.015,
         rate_limit_window_seconds: float = 1.0,
         rate_limit_max_events: int = 200,
@@ -41,6 +58,7 @@ class ActionReceiver:
         self._midi_out = midi_out
         self._mappings = mappings
         self._timeout_seconds = timeout_seconds
+        self._macro_settings = macro_settings or MacroSettings()
         self._dedupe_window_seconds = dedupe_window_seconds
         self._rate_limit_window_seconds = rate_limit_window_seconds
         self._rate_limit_max_events = rate_limit_max_events
@@ -51,11 +69,20 @@ class ActionReceiver:
         self._recent_events: dict[tuple[str, str], float] = {}
         self._event_times: deque[float] = deque()
         self._loop_guard_until = 0.0
+        self._macro_values: dict[tuple[int, int], int] = {}
+        self._active_macro_fades: dict[tuple[int, int], ActiveMacroFade] = {}
+
+    @property
+    def fade_poll_interval_seconds(self) -> float | None:
+        if not self._active_macro_fades:
+            return None
+        return self._macro_settings.step_interval_seconds
 
     def handle_datagram(
         self, payload: bytes, addr: tuple[str, int], now: float | None = None
     ) -> bool:
         timestamp = self._clock() if now is None else now
+        self.advance_fades(now=timestamp)
 
         try:
             event = parse_action_event(payload)
@@ -82,7 +109,7 @@ class ActionReceiver:
         if not self._allow_event(event, timestamp):
             return False
         try:
-            return self._dispatch_event(event)
+            return self._dispatch_event(event, timestamp)
         except MidiError as exc:
             LOGGER.error("MIDI output error while handling %s: %s", event.action, exc)
             self._active_actions.pop(event.action, None)
@@ -90,6 +117,7 @@ class ActionReceiver:
 
     def check_timeouts(self, now: float | None = None) -> bool:
         timestamp = self._clock() if now is None else now
+        self.advance_fades(now=timestamp)
         if not self._sender_states:
             return False
 
@@ -112,10 +140,29 @@ class ActionReceiver:
             except MidiError as exc:
                 LOGGER.error("MIDI output error while releasing %s: %s", action, exc)
         self._active_actions.clear()
+        self._active_macro_fades.clear()
         try:
             self._midi_out.panic()
         except MidiError as exc:
             LOGGER.error("MIDI output error during panic reset: %s", exc)
+
+    def advance_fades(self, now: float | None = None) -> None:
+        timestamp = self._clock() if now is None else now
+        if not self._active_macro_fades or timestamp < self._loop_guard_until:
+            return
+
+        for key, fade in list(self._active_macro_fades.items()):
+            elapsed = max(0.0, timestamp - fade.start_time)
+            progress = min(1.0, elapsed / fade.duration_seconds)
+            next_value = round(
+                fade.start_value + (fade.target_value - fade.start_value) * progress
+            )
+
+            if self._macro_values.get(key) != next_value:
+                self._send_macro_value(fade.channel, fade.cc, next_value)
+
+            if progress >= 1.0:
+                self._active_macro_fades.pop(key, None)
 
     def _allow_event(self, event: ActionEvent, timestamp: float) -> bool:
         if timestamp < self._loop_guard_until:
@@ -160,11 +207,17 @@ class ActionReceiver:
         self.release_all()
         return False
 
-    def _dispatch_event(self, event: ActionEvent) -> bool:
+    def _dispatch_event(self, event: ActionEvent, timestamp: float) -> bool:
         mapping = self._mappings.get(event.action)
         if mapping is None:
             LOGGER.warning("no MIDI mapping for action %s", event.action)
             return False
+
+        if isinstance(mapping, MacroCCMapping):
+            handled = self._handle_macro_event(event, mapping, timestamp)
+            if handled:
+                LOGGER.info("action=%s state=%s seq=%s", event.action, event.state, event.seq)
+            return handled
 
         if event.state == "down":
             self._apply_down(mapping)
@@ -184,6 +237,8 @@ class ActionReceiver:
         if isinstance(mapping, ControlChangeMapping):
             self._midi_out.control_change(mapping.channel, mapping.cc, mapping.on_value)
             return
+        if isinstance(mapping, MacroCCMapping):
+            raise TypeError("macro mappings must be handled via _handle_macro_event")
         raise TypeError(f"unsupported mapping type: {type(mapping)!r}")
 
     def _release_mapping(self, action: str, mapping: MidiMapping) -> None:
@@ -195,7 +250,49 @@ class ActionReceiver:
             self._midi_out.control_change(mapping.channel, mapping.cc, mapping.off_value)
             LOGGER.info("released CC mapping for %s", action)
             return
+        if isinstance(mapping, MacroCCMapping):
+            return
         raise TypeError(f"unsupported mapping type: {type(mapping)!r}")
+
+    def _handle_macro_event(
+        self, event: ActionEvent, mapping: MacroCCMapping, timestamp: float
+    ) -> bool:
+        if event.state != "down":
+            return True
+
+        key = (mapping.channel, mapping.cc)
+        self._active_macro_fades.pop(key, None)
+
+        current_value = self._macro_values.get(key, self._macro_settings.min_value)
+        target_value = self._toggle_target(current_value)
+
+        if mapping.gesture == "click":
+            self._send_macro_value(mapping.channel, mapping.cc, target_value)
+            return True
+
+        if key not in self._macro_values:
+            self._send_macro_value(mapping.channel, mapping.cc, current_value)
+
+        self._active_macro_fades[key] = ActiveMacroFade(
+            channel=mapping.channel,
+            cc=mapping.cc,
+            start_value=current_value,
+            target_value=target_value,
+            start_time=timestamp,
+            duration_seconds=self._macro_settings.fade_duration_seconds,
+        )
+        self.advance_fades(now=timestamp)
+        return True
+
+    def _toggle_target(self, current_value: int) -> int:
+        midpoint = (self._macro_settings.min_value + self._macro_settings.max_value) / 2
+        if current_value > midpoint:
+            return self._macro_settings.min_value
+        return self._macro_settings.max_value
+
+    def _send_macro_value(self, channel: int, cc: int, value: int) -> None:
+        self._midi_out.control_change(channel, cc, value)
+        self._macro_values[(channel, cc)] = value
 
 
 def serve_forever(
@@ -207,17 +304,21 @@ def serve_forever(
 ) -> None:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((listen_host, listen_port))
-    sock.settimeout(poll_interval)
 
     LOGGER.info("listening on udp://%s:%s", listen_host, listen_port)
     try:
         while True:
             try:
+                fade_poll = receiver.fade_poll_interval_seconds
+                timeout = poll_interval if fade_poll is None else min(poll_interval, fade_poll)
+                sock.settimeout(timeout)
                 payload, addr = sock.recvfrom(4096)
             except socket.timeout:
+                receiver.advance_fades()
                 receiver.check_timeouts()
                 continue
             receiver.handle_datagram(payload, addr)
+            receiver.advance_fades()
             receiver.check_timeouts()
     except KeyboardInterrupt:
         LOGGER.info("shutdown requested")

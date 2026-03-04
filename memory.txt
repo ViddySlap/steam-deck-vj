@@ -1,5 +1,5 @@
 Steam Deck MIDI - Persistent Project Context
-Last updated: 2026-03-03
+Last updated: 2026-03-04
 
 note for ben do not delete the following command ever: cd /home/viddyslap/workspace/steam-deck-vj
 
@@ -53,19 +53,26 @@ Recent validation
   - installed receiver path behaved consistently with the repo-based receiver
 
 Packaging status
-- Current release line referenced during this session was v0.1.2.
+- Current backup release line is v0.1.3.
+- Root VERSION was bumped to 0.1.3 and pushed to GitHub on main.
+- Git tag v0.1.3 was created and pushed as a restore point for the repo state.
+- GitHub Release for v0.1.3 was created and published.
+- Attached release assets currently include:
+  - STEAMDECK-MIDI-SENDER-SETUP.tar.gz
+  - STEAMDECK-MIDI-RECEIVER-Setup-0.1.3.exe
 - Windows PyInstaller EXE and Inno Setup installer were rebuilt successfully from the Windows repo checkout during this session.
 - The updated installer output was:
-  C:\Users\Ben\steam-deck-vj\installer-output\STEAMDECK-MIDI-RECEIVER-Setup-0.1.2.exe
+  C:\Users\Ben\steam-deck-vj\installer-output\STEAMDECK-MIDI-RECEIVER-Setup-0.1.3.exe
 
 Operator workflow notes
 - Long pasted commands have caused shell issues in Konsole and PowerShell before; prefer one command per paste and verify output before continuing.
+- Ben currently prefers GitHub-based syncing across WSL, Windows, and Steam Deck rather than manual file copying between environments.
 - Ben's direct Windows repo run command noted during prior sessions:
   py -3.12 -m windows.win_recv --map config/windows_midi_map.json --midi-port "DECK_IN 1" --verbose
 - Ben's MIDI port listing command:
   py -3.12 -m windows.list_midi_ports
 
 Recommended next steps
-- Confirm the packaged Windows desktop shortcut now launches the heartbeat-aware receiver build, not the stale one.
+- Treat v0.1.3 as the current stable restore point before starting new iteration work.
 - If packaging is confirmed good, update any docs that still describe the Deck sender as `xinput test`-based.
 - Consider reducing heartbeat log noise in verbose mode if it becomes distracting during shows.

@@ -34,9 +34,21 @@ Example `config/windows_midi_map.json`:
 
 ```json
 {
+  "macro_settings": {
+    "fade_duration_seconds": 2.0,
+    "update_hz": 30,
+    "min_value": 0,
+    "max_value": 127
+  },
   "mappings": {
     "BTN_A": { "type": "note", "channel": 0, "note": 60, "velocity": 127 },
-    "DPAD_UP": { "type": "cc", "channel": 0, "cc": 1, "on_value": 127, "off_value": 0 }
+    "DPAD_UP": { "type": "macro_cc", "channel": 0, "cc": 22, "gesture": "click" },
+    "DPAD_UP_LONG_PRESS": {
+      "type": "macro_cc",
+      "channel": 0,
+      "cc": 22,
+      "gesture": "long_press"
+    }
   }
 }
 ```
@@ -45,6 +57,11 @@ Supported mapping types:
 
 - `note`
 - `cc`
+- `macro_cc`
+
+`macro_cc` uses the same CC for click and long-press actions. A click toggles immediately between
+the configured min/max values, while a long press starts a receiver-side linear fade to the opposite
+value and continues to completion even after button release.
 
 ## Running
 

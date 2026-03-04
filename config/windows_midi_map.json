@@ -1,4 +1,10 @@
 {
+  "macro_settings": {
+    "fade_duration_seconds": 2.0,
+    "update_hz": 30,
+    "min_value": 0,
+    "max_value": 127
+  },
   "mappings": {
     "BTN_A": {
       "type": "note",
@@ -49,52 +55,52 @@
       "velocity": 127
     },
     "DPAD_UP": {
-      "type": "note",
+      "type": "macro_cc",
       "channel": 0,
-      "note": 44,
-      "velocity": 127
+      "cc": 22,
+      "gesture": "click"
     },
     "DPAD_DOWN": {
-      "type": "note",
+      "type": "macro_cc",
       "channel": 0,
-      "note": 45,
-      "velocity": 127
+      "cc": 20,
+      "gesture": "click"
     },
     "DPAD_LEFT": {
-      "type": "note",
+      "type": "macro_cc",
       "channel": 0,
-      "note": 46,
-      "velocity": 127
+      "cc": 23,
+      "gesture": "click"
     },
     "DPAD_RIGHT": {
-      "type": "note",
+      "type": "macro_cc",
       "channel": 0,
-      "note": 47,
-      "velocity": 127
+      "cc": 21,
+      "gesture": "click"
     },
     "DPAD_UP_LONG_PRESS": {
-      "type": "note",
+      "type": "macro_cc",
       "channel": 0,
-      "note": 48,
-      "velocity": 127
+      "cc": 22,
+      "gesture": "long_press"
     },
     "DPAD_DOWN_LONG_PRESS": {
-      "type": "note",
+      "type": "macro_cc",
       "channel": 0,
-      "note": 49,
-      "velocity": 127
+      "cc": 20,
+      "gesture": "long_press"
     },
     "DPAD_LEFT_LONG_PRESS": {
-      "type": "note",
+      "type": "macro_cc",
       "channel": 0,
-      "note": 50,
-      "velocity": 127
+      "cc": 23,
+      "gesture": "long_press"
     },
     "DPAD_RIGHT_LONG_PRESS": {
-      "type": "note",
+      "type": "macro_cc",
       "channel": 0,
-      "note": 51,
-      "velocity": 127
+      "cc": 21,
+      "gesture": "long_press"
     },
     "L_STICK_UP": {
       "type": "note",

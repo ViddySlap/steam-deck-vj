@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from windows.config import NoteMapping
+from windows.config import MacroCCMapping, MacroSettings, NoteMapping
 from windows.receiver import ActionReceiver
 from windows.midi import MidiError
 from protocol.messages import encode_heartbeat_event
@@ -203,3 +203,182 @@ class ActionReceiverTests(unittest.TestCase):
 
         self.assertFalse(handled_during_cooldown)
         self.assertEqual(len(self.midi.calls), 5)
+
+    def test_macro_click_toggles_same_cc_without_release_output(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "DPAD_DOWN": MacroCCMapping(
+                    action="DPAD_DOWN",
+                    kind="macro_cc",
+                    channel=0,
+                    cc=20,
+                    gesture="click",
+                )
+            },
+            timeout_seconds=1.0,
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"DPAD_DOWN","state":"down","seq":1}', self.addr, now=0.0
+        )
+        receiver.handle_datagram(
+            b'{"action":"DPAD_DOWN","state":"up","seq":2}', self.addr, now=0.1
+        )
+        receiver.handle_datagram(
+            b'{"action":"DPAD_DOWN","state":"down","seq":3}', self.addr, now=0.2
+        )
+
+        self.assertEqual(self.midi.calls, [("cc", 0, 20, 127), ("cc", 0, 20, 0)])
+
+    def test_macro_long_press_fades_to_target_and_ignores_release(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "DPAD_DOWN_LONG_PRESS": MacroCCMapping(
+                    action="DPAD_DOWN_LONG_PRESS",
+                    kind="macro_cc",
+                    channel=0,
+                    cc=20,
+                    gesture="long_press",
+                )
+            },
+            timeout_seconds=1.0,
+            macro_settings=MacroSettings(fade_duration_seconds=2.0, update_hz=10),
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"DPAD_DOWN_LONG_PRESS","state":"down","seq":1}',
+            self.addr,
+            now=0.0,
+        )
+        receiver.advance_fades(now=1.0)
+        receiver.handle_datagram(
+            b'{"action":"DPAD_DOWN_LONG_PRESS","state":"up","seq":2}',
+            self.addr,
+            now=1.1,
+        )
+        receiver.advance_fades(now=2.0)
+
+        self.assertEqual(
+            self.midi.calls,
+            [("cc", 0, 20, 0), ("cc", 0, 20, 64), ("cc", 0, 20, 70), ("cc", 0, 20, 127)],
+        )
+
+    def test_macro_click_cancels_active_fade_for_same_layer(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "DPAD_DOWN": MacroCCMapping(
+                    action="DPAD_DOWN",
+                    kind="macro_cc",
+                    channel=0,
+                    cc=20,
+                    gesture="click",
+                ),
+                "DPAD_DOWN_LONG_PRESS": MacroCCMapping(
+                    action="DPAD_DOWN_LONG_PRESS",
+                    kind="macro_cc",
+                    channel=0,
+                    cc=20,
+                    gesture="long_press",
+                ),
+            },
+            timeout_seconds=1.0,
+            macro_settings=MacroSettings(fade_duration_seconds=2.0, update_hz=10),
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"DPAD_DOWN_LONG_PRESS","state":"down","seq":1}',
+            self.addr,
+            now=0.0,
+        )
+        receiver.advance_fades(now=1.0)
+        receiver.handle_datagram(
+            b'{"action":"DPAD_DOWN","state":"down","seq":2}', self.addr, now=1.1
+        )
+        receiver.advance_fades(now=2.0)
+
+        self.assertEqual(
+            self.midi.calls,
+            [("cc", 0, 20, 0), ("cc", 0, 20, 64), ("cc", 0, 20, 70), ("cc", 0, 20, 0)],
+        )
+
+    def test_macro_fades_continue_after_sender_timeout(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "DPAD_RIGHT_LONG_PRESS": MacroCCMapping(
+                    action="DPAD_RIGHT_LONG_PRESS",
+                    kind="macro_cc",
+                    channel=0,
+                    cc=21,
+                    gesture="long_press",
+                )
+            },
+            timeout_seconds=1.0,
+            macro_settings=MacroSettings(fade_duration_seconds=2.0, update_hz=10),
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"DPAD_RIGHT_LONG_PRESS","state":"down","seq":1}',
+            self.addr,
+            now=0.0,
+        )
+        timed_out = receiver.check_timeouts(now=1.5)
+        receiver.advance_fades(now=2.0)
+
+        self.assertTrue(timed_out)
+        self.assertEqual(
+            self.midi.calls,
+            [("cc", 0, 21, 0), ("cc", 0, 21, 95), ("cc", 0, 21, 127)],
+        )
+
+    def test_macro_fades_run_independently_per_layer(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "DPAD_DOWN_LONG_PRESS": MacroCCMapping(
+                    action="DPAD_DOWN_LONG_PRESS",
+                    kind="macro_cc",
+                    channel=0,
+                    cc=20,
+                    gesture="long_press",
+                ),
+                "DPAD_RIGHT_LONG_PRESS": MacroCCMapping(
+                    action="DPAD_RIGHT_LONG_PRESS",
+                    kind="macro_cc",
+                    channel=0,
+                    cc=21,
+                    gesture="long_press",
+                ),
+            },
+            timeout_seconds=1.0,
+            macro_settings=MacroSettings(fade_duration_seconds=2.0, update_hz=10),
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"DPAD_DOWN_LONG_PRESS","state":"down","seq":1}',
+            self.addr,
+            now=0.0,
+        )
+        receiver.handle_datagram(
+            b'{"action":"DPAD_RIGHT_LONG_PRESS","state":"down","seq":2}',
+            self.addr,
+            now=0.5,
+        )
+        receiver.advance_fades(now=1.5)
+        receiver.advance_fades(now=2.5)
+
+        self.assertEqual(
+            self.midi.calls,
+            [
+                ("cc", 0, 20, 0),
+                ("cc", 0, 20, 32),
+                ("cc", 0, 21, 0),
+                ("cc", 0, 20, 95),
+                ("cc", 0, 21, 64),
+                ("cc", 0, 20, 127),
+                ("cc", 0, 21, 127),
+            ],
+        )

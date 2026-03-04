@@ -95,7 +95,7 @@ def main(argv: list[str] | None = None) -> int:
             raise ConfigError("--map is required unless --list-ports or --check-midi-port is used")
 
         listen_host, listen_port = parse_listen(args.listen)
-        mappings = load_midi_map(args.map_path)
+        receiver_config = load_midi_map(args.map_path)
         midi_out = open_midi_output(args.midi_port, args.dry_run)
     except (argparse.ArgumentTypeError, ConfigError, MidiError) as exc:
         parser.error(str(exc))
@@ -107,7 +107,12 @@ def main(argv: list[str] | None = None) -> int:
         midi_out.port_index if midi_out.port_index is not None else "n/a",
     )
 
-    receiver = ActionReceiver(midi_out, mappings, timeout_seconds=args.timeout)
+    receiver = ActionReceiver(
+        midi_out,
+        receiver_config.mappings,
+        timeout_seconds=args.timeout,
+        macro_settings=receiver_config.macro_settings,
+    )
     try:
         serve_forever(listen_host, listen_port, receiver)
     finally:

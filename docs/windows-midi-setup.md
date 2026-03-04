@@ -75,3 +75,5 @@ Do not enable Resolume MIDI output on `DECK_IN`.
 - If the port name is wrong, the receiver will print the available indexed port list.
 - The receiver accepts a unique port prefix, so `DECK_IN` can resolve `DECK_IN 1`.
 - For initial testing, keep the example mappings in `config/windows_midi_map.json`.
+- The shipped example map assigns the four D-pad opacity macros to CCs `20` through `23`; use
+  Resolume MIDI Learn to bind those CCs to the target layer opacity controls manually.

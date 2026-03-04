@@ -89,7 +89,8 @@ class ActiveStagedNoteMacro:
 class LayerStatePublisher:
     note: int
     raw_channel: int
-    state_channel: int
+    layer_1_channel: int
+    layer_2_channel: int
     state: str = LAYER_UNKNOWN
     last_published_state: str | None = None
     last_publish_time: float = 0.0
@@ -613,9 +614,11 @@ class ActionReceiver:
 
     def _publish_layer_state(self, publisher: LayerStatePublisher, timestamp: float) -> None:
         if publisher.state == LAYER_2:
-            self._midi_out.note_on(publisher.state_channel, publisher.note, 127)
+            self._midi_out.note_off(publisher.layer_1_channel, publisher.note, 0)
+            self._midi_out.note_on(publisher.layer_2_channel, publisher.note, 127)
         else:
-            self._midi_out.note_off(publisher.state_channel, publisher.note, 0)
+            self._midi_out.note_on(publisher.layer_1_channel, publisher.note, 127)
+            self._midi_out.note_off(publisher.layer_2_channel, publisher.note, 0)
         publisher.last_published_state = publisher.state
         publisher.last_publish_time = timestamp
 
@@ -632,7 +635,8 @@ class ActionReceiver:
         return LayerStatePublisher(
             note=mapping.note,
             raw_channel=mapping.channel,
-            state_channel=0,
+            layer_1_channel=0,
+            layer_2_channel=1,
         )
 
     def _toggle_target(self, current_value: int) -> int:

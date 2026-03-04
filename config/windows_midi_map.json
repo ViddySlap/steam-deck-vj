@@ -263,13 +263,13 @@
     },
     "START": {
       "type": "note",
-      "channel": 1,
+      "channel": 2,
       "note": 78,
       "velocity": 127
     },
     "SELECT": {
       "type": "note",
-      "channel": 1,
+      "channel": 2,
       "note": 79,
       "velocity": 127
     },

@@ -77,9 +77,9 @@ second trigger `note_on` on a different channel using the same note number. The 
 held for a fixed receiver-side duration and then released automatically.
 
 The receiver also maintains authoritative layer-state publishers for the Steam Input toggle layers:
-- ABXY layer state uses the `START` note number on Channel 1
-- bumper/trigger layer state uses the `SELECT` note number on Channel 1
-- raw `START` and `SELECT` button presses remain available on Channel 2 for MIDI Learn
+- ABXY layer state uses the `START` note number on Channels 1 and 2 as explicit Layer 1 / Layer 2 lamps
+- bumper/trigger layer state uses the `SELECT` note number on Channels 1 and 2 as explicit Layer 1 / Layer 2 lamps
+- raw `START` and `SELECT` button presses remain available on Channel 3 for MIDI Learn
 - layer state self-heals from ground-truth action IDs such as `BTN_A_LAYER_2` or `L1_LAYER_2`
 
 Tracked `macro_cc` parameters are also the current feedback/cache subset. When `--feedback-port` is

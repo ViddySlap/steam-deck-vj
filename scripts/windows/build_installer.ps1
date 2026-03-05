@@ -11,6 +11,12 @@ if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
     $RepoRoot = (Resolve-Path $RepoRoot).Path
 }
 
+Write-Host "Building fresh Windows receiver EXE before packaging installer..."
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "build_exe.ps1") -RepoRoot $RepoRoot
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to build receiver EXE before installer packaging."
+}
+
 $exePath = Join-Path $RepoRoot "dist\STEAMDECK-MIDI-RECEIVER.exe"
 if (-not (Test-Path $exePath)) {
     throw "Packaged receiver EXE not found at '$exePath'. Build it first with build_exe.ps1."

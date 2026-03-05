@@ -32,6 +32,9 @@ WizardStyle=modern
 DisableProgramGroupPage=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+CloseApplications=yes
+CloseApplicationsFilter=STEAMDECK-MIDI-RECEIVER.exe
+RestartApplications=no
 
 [Dirs]
 Name: "{app}\config"; Permissions: users-modify

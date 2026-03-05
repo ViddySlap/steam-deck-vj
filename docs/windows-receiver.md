@@ -1,6 +1,6 @@
 # Windows Receiver
 
-This first implementation slice provides:
+This receiver provides:
 
 - UDP listener for JSON action events
 - protocol validation for `action`, `state`, and `seq`

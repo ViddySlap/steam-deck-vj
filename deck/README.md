@@ -8,4 +8,4 @@ Steam Deck-side components live here:
 Current modules:
 
 - `learn_wizard.py`: interactive xinput-based binding capture wizard
-- `xinput_send.py`: run `xinput test <device_id>`, map keycodes to Action IDs, and send UDP events
+- `xinput_send.py`: listen for X11/XI2 raw key events for a device id, map keycodes to Action IDs, and send UDP events

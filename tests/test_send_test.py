@@ -17,7 +17,7 @@ class EncodeEventTests(unittest.TestCase):
         )
         self.assertEqual(
             json.loads(payload.decode("utf-8")),
-            {"action": "BTN_A", "state": "down", "seq": 4},
+            {"kind": "action", "action": "BTN_A", "state": "down", "seq": 4},
         )
 
     def test_encodes_optional_fields(self) -> None:
@@ -31,6 +31,7 @@ class EncodeEventTests(unittest.TestCase):
         self.assertEqual(
             json.loads(payload.decode("utf-8")),
             {
+                "kind": "action",
                 "action": "BTN_A",
                 "state": "up",
                 "seq": 5,

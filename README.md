@@ -1,19 +1,36 @@
 # steam-deck-midi
 
-STEAMDECK MIDI TX/RX is a Steam Deck to Windows MIDI bridge for Resolume-oriented control.
+Steam Deck MIDI is a show-focused Steam Deck to Windows MIDI bridge for Resolume.
 
-Current status:
+The control contract is stable Action IDs:
 
-- Git repo initialized and connected to GitHub
-- initial project scaffold created
-- first Windows receiver slice implemented
-- Deck Learn Wizard and Deck sender are working on Steam Deck
-- Windows MIDI v1 path standardized on `mido` + `python-rtmidi`
+- Steam Deck captures Steam Input-generated buttons.
+- Deck sender maps button tokens to Action IDs and sends UDP JSON events.
+- Windows receiver maps Action IDs to MIDI note/CC output for Resolume.
 
-Receiver docs: `docs/windows-receiver.md`
-Installer docs: `docs/windows-install.md`
-Packaging docs: `docs/windows-packaging.md`
-Release checklist: `docs/windows-release-checklist.md`
-GitHub release docs: `docs/github-release.md`
-Steam Deck install docs: `docs/steamdeck-install.md`
-Deck release checklist: `docs/deck-release-checklist.md`
+## Current status (v0.1.6)
+
+- Deck sender runtime uses direct X11/XI2 raw key listening (no `xinput test` subprocess parsing).
+- Sender emits one `down`/`up` pair per press/release and heartbeat messages while held.
+- Windows receiver supports:
+  - action-to-note/CC mapping from `config/windows_midi_map.json`
+  - `macro_cc` fades with feedback-aware manual override handling
+  - `relative_cc` repeat output for encoder-style controls
+  - duplicate suppression, timeout-based safety release, and panic/reset handling
+  - separate MIDI output and feedback input port configuration
+- Steam Deck install flow provides branded desktop launchers:
+  - `Learn Steam Input Map`
+  - `STEAMDECK-MIDI-SENDER`
+- Windows release flow includes PyInstaller + Inno Setup packaging.
+
+## Docs
+
+- Receiver: `docs/windows-receiver.md`
+- Windows install: `docs/windows-install.md`
+- Windows packaging: `docs/windows-packaging.md`
+- Windows release checklist: `docs/windows-release-checklist.md`
+- GitHub release process: `docs/github-release.md`
+- Steam Deck install: `docs/steamdeck-install.md`
+- Deck sender behavior: `docs/deck-sender.md`
+- Deck Learn Wizard: `docs/deck-learn-wizard.md`
+- Deck release checklist: `docs/deck-release-checklist.md`

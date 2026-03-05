@@ -1,19 +1,13 @@
 # Deck Sender
 
-This first Deck-side sender uses `xinput test <device_id>` as the input source.
-
-It watches lines like:
-
-```text
-key press   14
-key release 14
-```
+Deck sender listens to X11/XI2 raw key events for the configured device id.
 
 Then it:
 
 - maps the numeric keycode token to an Action ID using `config/deck_bindings.json`
-- converts `press` to `down` and `release` to `up`
+- converts raw key press to `down` and raw key release to `up`
 - sends the JSON event to the Windows receiver over UDP
+- sends heartbeat events while any key is held
 
 ## Binding Format
 
@@ -52,3 +46,4 @@ python3 -m deck.launch_send
 - Sequence numbers start at `1` each time the sender starts.
 - This is intended for SteamOS Desktop Mode / X11.
 - The launcher stores target presets in `config/deck_runtime_settings.local.json`.
+- Learn Wizard capture remains on the older xinput-based path by design.

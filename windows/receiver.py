@@ -123,6 +123,7 @@ class ActionReceiver:
         self._clock = clock
         self._sender_states: dict[tuple[str, int], SenderState] = {}
         self._active_actions: dict[str, MidiMapping] = {}
+        self._active_control_actions: dict[str, str] = {}
         self._recent_events: dict[tuple[str, str], float] = {}
         self._event_times: deque[float] = deque()
         self._loop_guard_until = 0.0
@@ -221,6 +222,7 @@ class ActionReceiver:
             except MidiError as exc:
                 LOGGER.error("MIDI output error while releasing %s: %s", action, exc)
         self._active_actions.clear()
+        self._active_control_actions.clear()
         self._active_macro_fades.clear()
         self._active_relative_ccs.clear()
         for active in list(self._active_staged_note_macros.values()):
@@ -419,16 +421,39 @@ class ActionReceiver:
                 LOGGER.info("action=%s state=%s seq=%s", event.action, event.state, event.seq)
             return handled
 
+        control_id = self._control_id_for_action(event.action)
         if event.state == "down":
+            previous_action = self._active_control_actions.get(control_id)
+            if previous_action is not None and previous_action != event.action:
+                previous_mapping = self._active_actions.get(previous_action)
+                if previous_mapping is not None:
+                    self._release_mapping(previous_action, previous_mapping)
+                    self._active_actions.pop(previous_action, None)
+                    LOGGER.info(
+                        "layer-switch retrigger handoff control=%s from=%s to=%s",
+                        control_id,
+                        previous_action,
+                        event.action,
+                    )
             self._apply_down(mapping)
             self._active_actions[event.action] = mapping
+            self._active_control_actions[control_id] = event.action
             LOGGER.info("action=%s state=down seq=%s", event.action, event.seq)
             return True
 
-        self._release_mapping(event.action, mapping)
-        self._active_actions.pop(event.action, None)
+        if event.action in self._active_actions:
+            self._release_mapping(event.action, mapping)
+            self._active_actions.pop(event.action, None)
+            if self._active_control_actions.get(control_id) == event.action:
+                self._active_control_actions.pop(control_id, None)
         LOGGER.info("action=%s state=up seq=%s", event.action, event.seq)
         return True
+
+    def _control_id_for_action(self, action: str) -> str:
+        suffix = "_LAYER_2"
+        if action.endswith(suffix):
+            return action[: -len(suffix)]
+        return action
 
     def _apply_down(self, mapping: MidiMapping) -> None:
         if isinstance(mapping, NoteMapping):

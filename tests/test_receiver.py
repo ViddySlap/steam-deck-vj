@@ -240,6 +240,94 @@ class ActionReceiverTests(unittest.TestCase):
             [("note_on", 0, 98, 127), ("note_off", 0, 98, 0), ("note_on", 0, 98, 127)],
         )
 
+    def test_layer_switch_retriggers_held_control_for_base_and_layer_2_actions(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "SELECT": ControlChangeMapping(
+                    action="SELECT",
+                    kind="cc",
+                    channel=2,
+                    cc=79,
+                    on_value=127,
+                    off_value=0,
+                ),
+                "R2_FULL": NoteMapping(
+                    action="R2_FULL",
+                    kind="note",
+                    channel=0,
+                    note=70,
+                ),
+                "R2_FULL_LAYER_2": NoteMapping(
+                    action="R2_FULL_LAYER_2",
+                    kind="note",
+                    channel=0,
+                    note=71,
+                ),
+            },
+            timeout_seconds=1.0,
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"R2_FULL","state":"down","seq":1}', self.addr, now=0.0
+        )
+        receiver.handle_datagram(
+            b'{"action":"SELECT","state":"down","seq":2}', self.addr, now=0.1
+        )
+        receiver.handle_datagram(
+            b'{"action":"R2_FULL_LAYER_2","state":"down","seq":3}', self.addr, now=0.2
+        )
+        receiver.handle_datagram(
+            b'{"action":"R2_FULL_LAYER_2","state":"up","seq":4}', self.addr, now=0.3
+        )
+
+        self.assertEqual(
+            self.midi.calls,
+            [
+                ("cc", 0, 79, 127),
+                ("cc", 1, 79, 0),
+                ("note_on", 0, 70, 127),
+                ("cc", 0, 79, 0),
+                ("cc", 1, 79, 127),
+                ("cc", 2, 79, 127),
+                ("note_off", 0, 70, 0),
+                ("note_on", 0, 71, 127),
+                ("note_off", 0, 71, 0),
+            ],
+        )
+
+    def test_layer_2_variant_without_base_down_does_not_force_base_release(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "R2_FULL": NoteMapping(
+                    action="R2_FULL",
+                    kind="note",
+                    channel=0,
+                    note=70,
+                ),
+                "R2_FULL_LAYER_2": NoteMapping(
+                    action="R2_FULL_LAYER_2",
+                    kind="note",
+                    channel=0,
+                    note=71,
+                ),
+            },
+            timeout_seconds=1.0,
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"R2_FULL_LAYER_2","state":"down","seq":1}', self.addr, now=0.0
+        )
+        receiver.handle_datagram(
+            b'{"action":"R2_FULL_LAYER_2","state":"up","seq":2}', self.addr, now=0.1
+        )
+
+        self.assertEqual(
+            self.midi.calls,
+            [("note_on", 0, 71, 127), ("note_off", 0, 71, 0)],
+        )
+
     def test_macro_long_press_fades_to_target_and_ignores_release(self) -> None:
         receiver = ActionReceiver(
             self.midi,

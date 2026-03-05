@@ -7,6 +7,7 @@ import socket
 import time
 from collections import deque
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Callable
 
 from protocol.messages import ActionEvent, HeartbeatEvent, ProtocolError, parse_action_event
@@ -301,6 +302,33 @@ class ActionReceiver:
             value,
         )
         return True
+
+    def classify_midi_feedback(
+        self,
+        channel: int,
+        cc: int,
+        value: int,
+        *,
+        now: float | None = None,
+    ) -> str:
+        key = (channel, cc)
+        if key not in self._tracked_macro_keys:
+            return "untracked_cc"
+
+        fade = self._active_macro_fades.get(key)
+        if fade is None:
+            return "tracked_update"
+
+        timestamp = self._clock() if now is None else now
+        expected_value = self._fade_value_at(fade, timestamp)
+        current_value = self._macro_values.get(key)
+        if self._feedback_matches_active_fade(
+            value,
+            expected_value=expected_value,
+            current_value=current_value,
+        ):
+            return "tracked_ignored_active_fade_match"
+        return "tracked_manual_override_update"
 
     def advance_relative_ccs(self, now: float | None = None) -> None:
         timestamp = self._clock() if now is None else now
@@ -694,15 +722,39 @@ def _drain_midi_feedback(receiver: ActionReceiver, midi_in: MidiIn | None) -> No
     if midi_in is None:
         return
     for message in midi_in.poll_control_changes():
-        _handle_feedback_message(receiver, message)
+        _handle_feedback_message(receiver, midi_in, message)
 
 
-def _handle_feedback_message(receiver: ActionReceiver, message: MidiControlChange) -> None:
+def _handle_feedback_message(
+    receiver: ActionReceiver,
+    midi_in: MidiIn,
+    message: MidiControlChange,
+) -> None:
+    now = time.monotonic()
+    route = receiver.classify_midi_feedback(
+        message.channel,
+        message.control,
+        message.value,
+        now=now,
+    )
+    updated = route != "untracked_cc" and route != "tracked_ignored_active_fade_match"
+    LOGGER.debug(
+        "midi feedback rx ts=%s port=%s channel=%s cc=%s value=%s tracked=%s updated=%s route=%s",
+        datetime.now().isoformat(timespec="milliseconds"),
+        midi_in.port_name,
+        message.channel + 1,
+        message.control,
+        message.value,
+        route != "untracked_cc",
+        updated,
+        route,
+    )
     try:
         receiver.handle_midi_feedback(
             message.channel,
             message.control,
             message.value,
+            now=now,
         )
     except Exception:
         LOGGER.exception(

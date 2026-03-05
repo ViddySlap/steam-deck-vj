@@ -27,3 +27,6 @@ release-output/
 
 # Local working notes / agent instructions
 RESUME-NOTES.txt
+
+# Local SSH wrapper config (contains host/user details)
+scripts/windows/.ssh_task.local

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Copy to scripts/windows/.ssh_task.local and edit locally.
+# This file is tracked; .ssh_task.local is gitignored.
+
+WIN_SSH_HOST="youruser@your-windows-host"

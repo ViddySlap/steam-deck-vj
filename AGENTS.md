@@ -172,3 +172,36 @@ Local Deck runtime config:
 ### Message Format (v1)
 
 UDP JSON messages:
+
+## Windows Operations via SSH (Guardrails)
+
+The WSL-side agent may run Windows-specific operations ONLY through the repo wrapper script:
+
+- `scripts/windows/ssh_task.sh <task>`
+
+The agent MUST NOT execute raw SSH one-liners like:
+`ssh ... "powershell ..."`
+
+### Allowed tasks
+
+`scripts/windows/ssh_task.sh` exposes ONLY:
+
+- `status` — git status + VERSION (read-only)
+- `pull` — git pull --ff-only (repo-only change)
+- `build_exe` — runs `scripts/windows/build_exe.ps1`
+- `build_installer` — runs `scripts/windows/build_installer.ps1`
+- `list_output` — lists `installer-output` directory
+
+### Safety constraints
+
+- Hardcode the Windows repo root path and restrict all operations to it.
+- Refuse any task not on the allowlist.
+- No arbitrary command strings.
+- No deletion outside the build output directory (and only if a dedicated clean task is added later).
+
+### Codex execution policy
+
+- SSH commands may require explicit approval depending on sandbox rules.
+- Prefer approving ONLY the wrapper script execution, not raw SSH commands.
+- If Codex requests elevated execution for SSH, the user must verify the wrapper task being run.
+---

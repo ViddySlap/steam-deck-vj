@@ -45,6 +45,12 @@ BUMPER_LAYER_2_ACTIONS = {
     "R2_SOFT_LAYER_2",
     "R2_FULL_LAYER_2",
 }
+SUPPRESSED_TRIGGER_ACTIONS = {
+    "L2_SOFT",
+    "R2_SOFT",
+    "L2_SOFT_LAYER_2",
+    "R2_SOFT_LAYER_2",
+}
 
 
 @dataclass
@@ -402,6 +408,15 @@ class ActionReceiver:
         if mapping is None:
             LOGGER.warning("no MIDI mapping for action %s", event.action)
             return False
+
+        if event.action in SUPPRESSED_TRIGGER_ACTIONS:
+            LOGGER.debug(
+                "suppressed trigger action under FULL_ONLY policy: action=%s state=%s seq=%s",
+                event.action,
+                event.state,
+                event.seq,
+            )
+            return True
 
         if isinstance(mapping, MacroCCMapping):
             handled = self._handle_macro_event(event, mapping, timestamp)

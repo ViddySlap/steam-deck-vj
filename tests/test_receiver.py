@@ -287,10 +287,10 @@ class ActionReceiverTests(unittest.TestCase):
                 ("cc", 0, 79, 127),
                 ("cc", 1, 79, 0),
                 ("note_on", 0, 70, 127),
+                ("note_off", 0, 70, 0),
                 ("cc", 0, 79, 0),
                 ("cc", 1, 79, 127),
                 ("cc", 2, 79, 127),
-                ("note_off", 0, 70, 0),
                 ("note_on", 0, 71, 127),
                 ("note_off", 0, 71, 0),
             ],
@@ -326,6 +326,77 @@ class ActionReceiverTests(unittest.TestCase):
         self.assertEqual(
             self.midi.calls,
             [("note_on", 0, 71, 127), ("note_off", 0, 71, 0)],
+        )
+
+    def test_first_layer_toggle_releases_held_actions_even_when_layer_state_is_unknown(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "SELECT": ControlChangeMapping(
+                    action="SELECT",
+                    kind="cc",
+                    channel=2,
+                    cc=79,
+                    on_value=127,
+                    off_value=0,
+                ),
+                "R4": NoteMapping(
+                    action="R4",
+                    kind="note",
+                    channel=0,
+                    note=76,
+                ),
+                "L4": NoteMapping(
+                    action="L4",
+                    kind="note",
+                    channel=0,
+                    note=74,
+                ),
+                "R2_FULL_LAYER_2": NoteMapping(
+                    action="R2_FULL_LAYER_2",
+                    kind="note",
+                    channel=0,
+                    note=71,
+                ),
+                "R2_SOFT_LAYER_2": NoteMapping(
+                    action="R2_SOFT_LAYER_2",
+                    kind="note",
+                    channel=0,
+                    note=69,
+                ),
+            },
+            timeout_seconds=1.0,
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"R4","state":"down","seq":1}', self.addr, now=0.0
+        )
+        receiver.handle_datagram(
+            b'{"action":"L4","state":"down","seq":2}', self.addr, now=0.1
+        )
+        receiver.handle_datagram(
+            b'{"action":"SELECT","state":"down","seq":3}', self.addr, now=0.2
+        )
+        receiver.handle_datagram(
+            b'{"action":"R2_FULL_LAYER_2","state":"down","seq":4}', self.addr, now=0.3
+        )
+        receiver.handle_datagram(
+            b'{"action":"R2_SOFT_LAYER_2","state":"down","seq":5}', self.addr, now=0.4
+        )
+
+        self.assertEqual(
+            self.midi.calls,
+            [
+                ("note_on", 0, 76, 127),
+                ("note_on", 0, 74, 127),
+                ("note_off", 0, 76, 0),
+                ("note_off", 0, 74, 0),
+                ("cc", 2, 79, 127),
+                ("cc", 0, 79, 0),
+                ("cc", 1, 79, 127),
+                ("note_on", 0, 71, 127),
+                ("note_on", 0, 69, 127),
+            ],
         )
 
     def test_macro_long_press_fades_to_target_and_ignores_release(self) -> None:
@@ -907,6 +978,7 @@ class ActionReceiverTests(unittest.TestCase):
                 ("cc", 0, 78, 0),
                 ("cc", 1, 78, 127),
                 ("note_on", 0, 37, 127),
+                ("note_off", 0, 37, 0),
                 ("cc", 0, 78, 127),
                 ("cc", 1, 78, 0),
                 ("cc", 2, 78, 127),

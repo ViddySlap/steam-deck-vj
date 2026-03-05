@@ -123,7 +123,6 @@ class ActionReceiver:
         self._clock = clock
         self._sender_states: dict[tuple[str, int], SenderState] = {}
         self._active_actions: dict[str, MidiMapping] = {}
-        self._active_control_actions: dict[str, str] = {}
         self._recent_events: dict[tuple[str, str], float] = {}
         self._event_times: deque[float] = deque()
         self._loop_guard_until = 0.0
@@ -222,7 +221,6 @@ class ActionReceiver:
             except MidiError as exc:
                 LOGGER.error("MIDI output error while releasing %s: %s", action, exc)
         self._active_actions.clear()
-        self._active_control_actions.clear()
         self._active_macro_fades.clear()
         self._active_relative_ccs.clear()
         for active in list(self._active_staged_note_macros.values()):
@@ -421,39 +419,17 @@ class ActionReceiver:
                 LOGGER.info("action=%s state=%s seq=%s", event.action, event.state, event.seq)
             return handled
 
-        control_id = self._control_id_for_action(event.action)
         if event.state == "down":
-            previous_action = self._active_control_actions.get(control_id)
-            if previous_action is not None and previous_action != event.action:
-                previous_mapping = self._active_actions.get(previous_action)
-                if previous_mapping is not None:
-                    self._release_mapping(previous_action, previous_mapping)
-                    self._active_actions.pop(previous_action, None)
-                    LOGGER.info(
-                        "layer-switch retrigger handoff control=%s from=%s to=%s",
-                        control_id,
-                        previous_action,
-                        event.action,
-                    )
             self._apply_down(mapping)
             self._active_actions[event.action] = mapping
-            self._active_control_actions[control_id] = event.action
             LOGGER.info("action=%s state=down seq=%s", event.action, event.seq)
             return True
 
         if event.action in self._active_actions:
             self._release_mapping(event.action, mapping)
             self._active_actions.pop(event.action, None)
-            if self._active_control_actions.get(control_id) == event.action:
-                self._active_control_actions.pop(control_id, None)
         LOGGER.info("action=%s state=up seq=%s", event.action, event.seq)
         return True
-
-    def _control_id_for_action(self, action: str) -> str:
-        suffix = "_LAYER_2"
-        if action.endswith(suffix):
-            return action[: -len(suffix)]
-        return action
 
     def _apply_down(self, mapping: MidiMapping) -> None:
         if isinstance(mapping, NoteMapping):
@@ -600,8 +576,10 @@ class ActionReceiver:
 
     def _handle_layer_toggle_hint(self, action: str, timestamp: float) -> None:
         if action == "START":
+            self._retrigger_held_actions_on_layer_change(exclude_actions={action})
             self._toggle_known_layer_state(self._abxy_layer_publisher, timestamp)
         elif action == "SELECT":
+            self._retrigger_held_actions_on_layer_change(exclude_actions={action})
             self._toggle_known_layer_state(self._bumper_layer_publisher, timestamp)
 
     def _handle_layer_ground_truth(self, action: str, timestamp: float) -> None:
@@ -631,9 +609,10 @@ class ActionReceiver:
         state: str,
         timestamp: float,
         source: str,
-    ) -> None:
+    ) -> bool:
         if publisher is None:
-            return
+            return False
+        changed = publisher.state != state
         if publisher.state not in {LAYER_UNKNOWN, state}:
             LOGGER.info(
                 "layer state resync for cc=%s from=%s to=%s via=%s",
@@ -644,8 +623,9 @@ class ActionReceiver:
             )
         publisher.state = state
         if publisher.last_published_state == state:
-            return
+            return changed
         self._publish_layer_state(publisher, timestamp)
+        return changed
 
     def _publish_layer_state(self, publisher: LayerStatePublisher, timestamp: float) -> None:
         if publisher.state == LAYER_2:
@@ -666,6 +646,22 @@ class ActionReceiver:
             layer_1_channel=0,
             layer_2_channel=1,
         )
+
+    def _retrigger_held_actions_on_layer_change(self, *, exclude_actions: set[str]) -> None:
+        # Layer switched while controls are still held: release active note/CC mappings so
+        # incoming down events from the new layer become fresh trigger edges.
+        for action, mapping in list(self._active_actions.items()):
+            if action in exclude_actions:
+                continue
+            try:
+                self._release_mapping(action, mapping)
+            except MidiError as exc:
+                LOGGER.error(
+                    "MIDI output error while releasing %s on layer change: %s",
+                    action,
+                    exc,
+                )
+            self._active_actions.pop(action, None)
 
     def _toggle_target(self, current_value: int) -> int:
         midpoint = (self._macro_settings.min_value + self._macro_settings.max_value) / 2

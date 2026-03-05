@@ -24,7 +24,9 @@ def load_build_fingerprint() -> dict[str, str] | None:
     candidates: list[Path] = []
     frozen_root = getattr(sys, "_MEIPASS", None)
     if frozen_root:
+        candidates.append(Path(frozen_root) / "windows-build-fingerprint.json")
         candidates.append(Path(frozen_root) / "build" / "windows-build-fingerprint.json")
+    candidates.append(Path(__file__).resolve().parent.parent / "windows-build-fingerprint.json")
     candidates.append(
         Path(__file__).resolve().parent.parent / "build" / "windows-build-fingerprint.json"
     )

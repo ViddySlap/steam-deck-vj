@@ -95,7 +95,7 @@ try {
     $gitCommitShort = "unknown"
 }
 $buildTimestampUtc = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-$fingerprintPath = Join-Path $RepoRoot "build\windows-build-fingerprint.json"
+$fingerprintPath = Join-Path $RepoRoot "windows-build-fingerprint.json"
 $fingerprint = [ordered]@{
     app_version = $appVersion
     git_commit = $gitCommit

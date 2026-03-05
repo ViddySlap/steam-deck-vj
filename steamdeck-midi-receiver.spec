@@ -13,7 +13,7 @@ datas = [
         str(project_root / "config" / "windows_receiver_settings.example.json"),
         "config",
     ),
-    (str(project_root / "build" / "windows-build-fingerprint.json"), "build"),
+    (str(project_root / "windows-build-fingerprint.json"), "."),
 ]
 
 hiddenimports = [

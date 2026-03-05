@@ -395,7 +395,73 @@ class ActionReceiverTests(unittest.TestCase):
                 ("cc", 0, 79, 0),
                 ("cc", 1, 79, 127),
                 ("note_on", 0, 71, 127),
-                ("note_on", 0, 69, 127),
+            ],
+        )
+
+    def test_soft_trigger_actions_are_suppressed_under_full_only_policy(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "R2_SOFT": NoteMapping(
+                    action="R2_SOFT",
+                    kind="note",
+                    channel=0,
+                    note=68,
+                ),
+                "R2_FULL": NoteMapping(
+                    action="R2_FULL",
+                    kind="note",
+                    channel=0,
+                    note=70,
+                ),
+                "R2_SOFT_LAYER_2": NoteMapping(
+                    action="R2_SOFT_LAYER_2",
+                    kind="note",
+                    channel=0,
+                    note=69,
+                ),
+                "R2_FULL_LAYER_2": NoteMapping(
+                    action="R2_FULL_LAYER_2",
+                    kind="note",
+                    channel=0,
+                    note=71,
+                ),
+            },
+            timeout_seconds=1.0,
+        )
+
+        receiver.handle_datagram(
+            b'{"action":"R2_SOFT","state":"down","seq":1}', self.addr, now=0.0
+        )
+        receiver.handle_datagram(
+            b'{"action":"R2_SOFT","state":"up","seq":2}', self.addr, now=0.1
+        )
+        receiver.handle_datagram(
+            b'{"action":"R2_FULL","state":"down","seq":3}', self.addr, now=0.2
+        )
+        receiver.handle_datagram(
+            b'{"action":"R2_FULL","state":"up","seq":4}', self.addr, now=0.3
+        )
+        receiver.handle_datagram(
+            b'{"action":"R2_SOFT_LAYER_2","state":"down","seq":5}', self.addr, now=0.4
+        )
+        receiver.handle_datagram(
+            b'{"action":"R2_SOFT_LAYER_2","state":"up","seq":6}', self.addr, now=0.5
+        )
+        receiver.handle_datagram(
+            b'{"action":"R2_FULL_LAYER_2","state":"down","seq":7}', self.addr, now=0.6
+        )
+        receiver.handle_datagram(
+            b'{"action":"R2_FULL_LAYER_2","state":"up","seq":8}', self.addr, now=0.7
+        )
+
+        self.assertEqual(
+            self.midi.calls,
+            [
+                ("note_on", 0, 70, 127),
+                ("note_off", 0, 70, 0),
+                ("note_on", 0, 71, 127),
+                ("note_off", 0, 71, 0),
             ],
         )
 

@@ -194,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
                         )
                         if duplicate_action is not None:
                             print(
-                                f"Warning: keycode {candidate.token} is already assigned to {duplicate_action}"
+                                f"Warning: keycode {candidate.token} is already assigned to {duplicate_action} and cannot be reused"
                             )
                     else:
                         chars = os.read(sys.stdin.fileno(), 8)
@@ -217,6 +217,15 @@ def main(argv: list[str] | None = None) -> int:
                             continue
 
                         current_action = actions[action_index]
+                        duplicate_action = find_duplicate_action(
+                            bindings, candidate.token
+                        )
+                        if duplicate_action is not None and duplicate_action != current_action:
+                            print(
+                                f"Error: keycode {candidate.token} is already assigned to {duplicate_action}. Capture a different control."
+                            )
+                            candidate = None
+                            continue
                         bindings[current_action] = candidate.token
                         print(
                             f"Confirmed: {current_action} <- keycode {candidate.token}"

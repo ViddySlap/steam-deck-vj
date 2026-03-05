@@ -8,6 +8,7 @@ from pathlib import Path
 
 from deck.xinput_send import (
     Xi2KeyEvent,
+    build_action_token_index,
     flush_block,
     load_bindings,
     next_select_timeout,
@@ -29,6 +30,22 @@ class LoadBindingsTests(unittest.TestCase):
 
         self.assertEqual(profile_name, "default")
         self.assertEqual(bindings, {"14": "BTN_A"})
+
+
+class BindingAuditTests(unittest.TestCase):
+    def test_builds_action_to_sorted_token_index(self) -> None:
+        index = build_action_token_index(
+            {
+                "18": "R2_SOFT",
+                "17": "R2_FULL",
+                "55": "R4",
+                "5": "R4",
+                "A": "R4",
+            }
+        )
+        self.assertEqual(index["R2_SOFT"], ["18"])
+        self.assertEqual(index["R2_FULL"], ["17"])
+        self.assertEqual(index["R4"], ["5", "55", "A"])
 
 
 class ShouldEmitEventTests(unittest.TestCase):

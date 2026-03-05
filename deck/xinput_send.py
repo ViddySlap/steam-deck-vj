@@ -20,6 +20,20 @@ HEARTBEAT_INTERVAL_SECONDS = 0.5
 GENERIC_EVENT = 35
 XI_RAW_KEY_PRESS = 13
 XI_RAW_KEY_RELEASE = 14
+SENDER_AUDIT_ACTIONS = (
+    "L2_SOFT",
+    "L2_FULL",
+    "R2_SOFT",
+    "R2_FULL",
+    "L2_SOFT_LAYER_2",
+    "L2_FULL_LAYER_2",
+    "R2_SOFT_LAYER_2",
+    "R2_FULL_LAYER_2",
+    "L4",
+    "L5",
+    "R4",
+    "R5",
+)
 
 
 def _load_library(name: str) -> ctypes.CDLL:
@@ -272,6 +286,26 @@ def load_bindings(path: str) -> tuple[str | None, dict[str, str]]:
     return profile_name, validated
 
 
+def build_action_token_index(bindings: dict[str, str]) -> dict[str, list[str]]:
+    action_tokens: dict[str, list[str]] = {}
+    for token, action in bindings.items():
+        action_tokens.setdefault(action, []).append(token)
+    for action in action_tokens:
+        action_tokens[action].sort(
+            key=lambda token: (0, int(token)) if token.isdigit() else (1, token)
+        )
+    return action_tokens
+
+
+def print_sender_binding_audit(bindings: dict[str, str]) -> None:
+    print("binding audit:")
+    action_tokens = build_action_token_index(bindings)
+    for action in SENDER_AUDIT_ACTIONS:
+        tokens = action_tokens.get(action)
+        token_text = ",".join(tokens) if tokens else "(unmapped)"
+        print(f"- {action}: {token_text}")
+
+
 def set_mask(mask: ctypes.Array[ctypes.c_ubyte], event_type: int) -> None:
     mask[event_type >> 3] |= 1 << (event_type & 7)
 
@@ -385,6 +419,7 @@ def run_sender(
         print(f"Error: invalid device id: {device_id}")
         return 2
 
+    print_sender_binding_audit(bindings)
     print(f"watching XI2 raw key events for device {device_id} and sending to {target}")
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:

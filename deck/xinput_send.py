@@ -20,12 +20,6 @@ HEARTBEAT_INTERVAL_SECONDS = 0.5
 GENERIC_EVENT = 35
 XI_RAW_KEY_PRESS = 13
 XI_RAW_KEY_RELEASE = 14
-SENDER_ACTION_REMAP = {
-    "R5": "L2_SOFT",
-    "L5": "L2_FULL",
-    "R4": "R2_SOFT",
-    "L4": "R2_FULL",
-}
 
 
 def _load_library(name: str) -> ctypes.CDLL:
@@ -327,10 +321,6 @@ def next_select_timeout(
     return max(0.0, next_heartbeat_at - now)
 
 
-def remap_action(action: str) -> str:
-    return SENDER_ACTION_REMAP.get(action, action)
-
-
 def send_action(
     sock: socket.socket,
     target: tuple[str, int],
@@ -428,11 +418,10 @@ def run_sender(
                     while parsed is not None:
                         event, action = flush_block(parsed, bindings, held_keys)
                         if event is not None and action is not None:
-                            outbound_action = remap_action(action)
                             send_action(
                                 sock,
                                 resolved_target,
-                                action=outbound_action,
+                                action=action,
                                 state=event.state,
                                 seq=seq,
                                 profile_name=resolved_profile_name,

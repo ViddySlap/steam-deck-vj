@@ -395,10 +395,11 @@ class ActionReceiverTests(unittest.TestCase):
                 ("cc", 0, 79, 0),
                 ("cc", 1, 79, 127),
                 ("note_on", 0, 71, 127),
+                ("note_on", 0, 69, 127),
             ],
         )
 
-    def test_soft_trigger_actions_are_suppressed_under_full_only_policy(self) -> None:
+    def test_soft_and_full_trigger_actions_both_emit_midi(self) -> None:
         receiver = ActionReceiver(
             self.midi,
             {
@@ -458,8 +459,12 @@ class ActionReceiverTests(unittest.TestCase):
         self.assertEqual(
             self.midi.calls,
             [
+                ("note_on", 0, 68, 127),
+                ("note_off", 0, 68, 0),
                 ("note_on", 0, 70, 127),
                 ("note_off", 0, 70, 0),
+                ("note_on", 0, 69, 127),
+                ("note_off", 0, 69, 0),
                 ("note_on", 0, 71, 127),
                 ("note_off", 0, 71, 0),
             ],

@@ -11,7 +11,6 @@ from deck.xinput_send import (
     flush_block,
     load_bindings,
     next_select_timeout,
-    remap_action,
     set_mask,
     should_emit_event,
 )
@@ -167,14 +166,3 @@ class SharedProtocolEncodingTests(unittest.TestCase):
         self.assertEqual(event.action, "BTN_A")
         self.assertEqual(event.state, "down")
         self.assertEqual(event.seq, 1)
-
-
-class SenderActionRemapTests(unittest.TestCase):
-    def test_remaps_trigger_alias_actions(self) -> None:
-        self.assertEqual(remap_action("R5"), "L2_SOFT")
-        self.assertEqual(remap_action("L5"), "L2_FULL")
-        self.assertEqual(remap_action("R4"), "R2_SOFT")
-        self.assertEqual(remap_action("L4"), "R2_FULL")
-
-    def test_leaves_other_actions_unchanged(self) -> None:
-        self.assertEqual(remap_action("BTN_A"), "BTN_A")

@@ -95,14 +95,16 @@ try {
     $gitCommitShort = "unknown"
 }
 $buildTimestampUtc = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-$fingerprintPath = Join-Path $RepoRoot "windows-build-fingerprint.json"
-$fingerprint = [ordered]@{
-    app_version = $appVersion
-    git_commit = $gitCommit
-    git_commit_short = $gitCommitShort
-    build_time_utc = $buildTimestampUtc
-}
-$fingerprint | ConvertTo-Json | Set-Content -Path $fingerprintPath -Encoding UTF8
+$fingerprintModulePath = Join-Path $RepoRoot "windows\build_fingerprint.py"
+$fingerprintModule = @"
+"""Build fingerprint metadata for runtime diagnostics."""
+
+APP_VERSION = "$appVersion"
+GIT_COMMIT = "$gitCommit"
+GIT_COMMIT_SHORT = "$gitCommitShort"
+BUILD_TIME_UTC = "$buildTimestampUtc"
+"@
+Set-Content -Path $fingerprintModulePath -Value $fingerprintModule -Encoding ASCII
 
 Write-Host "Installing build dependencies..."
 & $venvPython -m pip install --upgrade pip

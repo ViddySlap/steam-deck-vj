@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
-from pathlib import Path
 import sys
 
+from windows import build_fingerprint
 from windows.config import ConfigError, load_midi_map
 from windows.midi import (
     MidiError,
@@ -18,32 +17,6 @@ from windows.midi import (
     resolve_available_output_port_name,
 )
 from windows.receiver import ActionReceiver, serve_forever
-
-
-def load_build_fingerprint() -> dict[str, str] | None:
-    candidates: list[Path] = []
-    frozen_root = getattr(sys, "_MEIPASS", None)
-    if frozen_root:
-        candidates.append(Path(frozen_root) / "windows-build-fingerprint.json")
-        candidates.append(Path(frozen_root) / "build" / "windows-build-fingerprint.json")
-    candidates.append(Path(__file__).resolve().parent.parent / "windows-build-fingerprint.json")
-    candidates.append(
-        Path(__file__).resolve().parent.parent / "build" / "windows-build-fingerprint.json"
-    )
-
-    for candidate in candidates:
-        try:
-            payload = json.loads(candidate.read_text(encoding="utf-8"))
-        except (FileNotFoundError, json.JSONDecodeError, OSError):
-            continue
-        if not isinstance(payload, dict):
-            continue
-        return {
-            "app_version": str(payload.get("app_version", "unknown")),
-            "git_commit_short": str(payload.get("git_commit_short", "unknown")),
-            "build_time_utc": str(payload.get("build_time_utc", "unknown")),
-        }
-    return None
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -104,16 +77,12 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(levelname)s %(message)s",
     )
-    fingerprint = load_build_fingerprint()
-    if fingerprint is not None:
-        logging.info(
-            "build fingerprint: version=%s commit=%s built_utc=%s",
-            fingerprint["app_version"],
-            fingerprint["git_commit_short"],
-            fingerprint["build_time_utc"],
-        )
-    else:
-        logging.info("build fingerprint: unavailable")
+    logging.info(
+        "build fingerprint: version=%s commit=%s built_utc=%s",
+        build_fingerprint.APP_VERSION,
+        build_fingerprint.GIT_COMMIT_SHORT,
+        build_fingerprint.BUILD_TIME_UTC,
+    )
 
     try:
         if args.list_ports:

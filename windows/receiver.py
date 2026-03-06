@@ -389,15 +389,25 @@ class ActionReceiver:
             else self._dedupe_window_seconds
         )
         if previous is not None and (timestamp - previous) < dedupe_window_seconds:
+            if event.state == "up" and event.action in self._active_actions:
+                self._recent_events[event_key] = timestamp
+            else:
+                LOGGER.debug(
+                    "dropped duplicate event inside %.1fms window: action=%s state=%s seq=%s",
+                    dedupe_window_seconds * 1000,
+                    event.action,
+                    event.state,
+                    event.seq,
+                )
+                self._recent_events[event_key] = timestamp
+                return False
             LOGGER.debug(
-                "dropped duplicate event inside %.1fms window: action=%s state=%s seq=%s",
+                "accepting active release inside %.1fms window: action=%s state=%s seq=%s",
                 dedupe_window_seconds * 1000,
                 event.action,
                 event.state,
                 event.seq,
             )
-            self._recent_events[event_key] = timestamp
-            return False
         self._recent_events[event_key] = timestamp
 
         self._event_times.append(timestamp)

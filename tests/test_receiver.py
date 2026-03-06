@@ -206,6 +206,28 @@ class ActionReceiverTests(unittest.TestCase):
             ],
         )
 
+    def test_accepts_active_release_inside_dedupe_window(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {"R_STICK_RIGHT": NoteMapping(action="R_STICK_RIGHT", kind="note", channel=0, note=61)},
+            timeout_seconds=1.0,
+        )
+        receiver.handle_datagram(
+            b'{"action":"R_STICK_RIGHT","state":"down","seq":1}', self.addr, now=0.0
+        )
+        receiver._recent_events[("R_STICK_RIGHT", "up")] = 0.2
+
+        handled = receiver.handle_datagram(
+            b'{"action":"R_STICK_RIGHT","state":"up","seq":2}', self.addr, now=0.203
+        )
+
+        self.assertTrue(handled)
+        self.assertEqual(
+            self.midi.calls,
+            [("note_on", 0, 61, 127), ("note_off", 0, 61, 0)],
+        )
+        self.assertEqual(receiver._active_actions, {})
+
     def test_loop_guard_releases_active_state_when_rate_limit_trips(self) -> None:
         receiver = ActionReceiver(
             self.midi,

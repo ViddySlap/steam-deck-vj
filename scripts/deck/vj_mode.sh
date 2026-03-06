@@ -29,7 +29,8 @@ INPUTLEAP_FLATPAK_APP="${INPUTLEAP_FLATPAK_APP:-io.github.input_leap.input-leap}
 INPUTLEAP_CONFIG="${INPUTLEAP_CONFIG:-${HOME}/.var/app/io.github.input_leap.input-leap/config/InputLeap/InputLeap.conf}"
 INPUTLEAP_EXTRA_ARGS="${INPUTLEAP_EXTRA_ARGS:-}"
 INPUTLEAP_MODE="${INPUTLEAP_MODE:-server}"
-SENDER_ENABLE="${SENDER_ENABLE:-0}"
+INPUTLEAP_FALLBACK_TO_GUI="${INPUTLEAP_FALLBACK_TO_GUI:-1}"
+SENDER_ENABLE="${SENDER_ENABLE:-1}"
 SENDER_CMD="${SENDER_CMD:-${HOME}/steam-deck-midi/scripts/deck/run_sender.sh}"
 
 INPUTLEAP_PID=""
@@ -59,7 +60,11 @@ unset LD_PRELOAD
 log "LD_PRELOAD cleared"
 
 if [[ "${INPUTLEAP_ENABLE}" == "1" ]]; then
-  if command -v flatpak >/dev/null 2>&1; then
+  if pgrep -f "input-leap[sc]" >/dev/null 2>&1; then
+    log "InputLeap already running; skipping startup"
+  elif pgrep -f "io.github.input_leap.input-leap" >/dev/null 2>&1; then
+    log "InputLeap Flatpak already running; skipping startup"
+  elif command -v flatpak >/dev/null 2>&1; then
     if [[ -f "${INPUTLEAP_CONFIG}" ]]; then
       if [[ "${INPUTLEAP_MODE}" == "client" ]]; then
         log "Starting InputLeap client (flatpak) with config ${INPUTLEAP_CONFIG}"
@@ -68,6 +73,9 @@ if [[ "${INPUTLEAP_ENABLE}" == "1" ]]; then
           --no-daemon --no-restart --use-x11 --display "${DISPLAY:-:0}" \
           --config "${INPUTLEAP_CONFIG}" ${INPUTLEAP_EXTRA_ARGS} \
           >"${INPUTLEAP_LOG}" 2>&1 &
+      elif [[ "${INPUTLEAP_MODE}" == "gui" ]]; then
+        log "Starting InputLeap GUI (flatpak app)"
+        flatpak run "${INPUTLEAP_FLATPAK_APP}" >"${INPUTLEAP_LOG}" 2>&1 &
       else
         log "Starting InputLeap server (flatpak) with config ${INPUTLEAP_CONFIG}"
         # shellcheck disable=SC2086
@@ -78,6 +86,19 @@ if [[ "${INPUTLEAP_ENABLE}" == "1" ]]; then
       fi
       INPUTLEAP_PID="$!"
       log "InputLeap pid=${INPUTLEAP_PID}, log=${INPUTLEAP_LOG}"
+
+      # Quick health check to catch immediate startup failures.
+      sleep 2
+      if ! kill -0 "${INPUTLEAP_PID}" 2>/dev/null; then
+        log "InputLeap exited early; showing recent log tail"
+        tail -n 60 "${INPUTLEAP_LOG}" >>"${MAIN_LOG}" 2>/dev/null || true
+        if [[ "${INPUTLEAP_FALLBACK_TO_GUI}" == "1" ]] && [[ "${INPUTLEAP_MODE}" != "gui" ]]; then
+          log "Falling back to InputLeap GUI launch"
+          flatpak run "${INPUTLEAP_FLATPAK_APP}" >>"${INPUTLEAP_LOG}" 2>&1 &
+          INPUTLEAP_PID="$!"
+          log "InputLeap fallback GUI pid=${INPUTLEAP_PID}"
+        fi
+      fi
     else
       log "InputLeap config not found at ${INPUTLEAP_CONFIG}; skipping InputLeap startup"
     fi

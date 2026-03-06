@@ -20,14 +20,9 @@ It will:
 
 - clone or update the repo into `~/steam-deck-midi`
 - create `config/deck_runtime_settings.local.json` if missing
-- create desktop launchers:
+- create two desktop launchers:
   - `Learn Steam Input Map`
   - `STEAMDECK-MIDI-SENDER`
-  - `VJ Mode`
-- create VJ Mode runtime files:
-  - `~/vj-mode/vj_mode.sh`
-  - `~/vj-mode/vj_mode_status.py`
-  - `~/vj-mode/vj_mode.env` (created once and preserved on updates)
 
 ## Install
 
@@ -52,19 +47,6 @@ When `STEAMDECK-MIDI-SENDER` starts:
 - saves the preset and returns to the preset list
 
 Selecting a preset starts sender mode against that target IP on UDP port `45123`.
-
-## VJ Mode
-
-`VJ Mode` is a Game Mode launcher helper that starts TouchOSC with a target layout
-and can optionally start InputLeap (headless) and the Deck sender.
-
-Default TouchOSC target layout:
-
-- `~/Documents/TouchOSC/STEAMDECK V1.tosc`
-
-Local VJ overrides live in:
-
-- `~/vj-mode/vj_mode.env`
 
 ## Device Selection
 

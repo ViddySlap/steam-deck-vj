@@ -21,7 +21,6 @@ The control contract is stable Action IDs:
 - Steam Deck install flow provides branded desktop launchers:
   - `Learn Steam Input Map`
   - `STEAMDECK-MIDI-SENDER`
-  - `VJ Mode`
 - Windows release flow includes PyInstaller + Inno Setup packaging.
 
 ## Docs

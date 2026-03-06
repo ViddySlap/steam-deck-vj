@@ -30,11 +30,6 @@ The Deck release asset:
 - creates desktop launchers for:
   - `Learn Steam Input Map`
   - `STEAMDECK-MIDI-SENDER`
-  - `VJ Mode`
-- installs VJ runtime helpers under `~/vj-mode`:
-  - `vj_mode.sh`
-  - `vj_mode_status.py`
-  - `vj_mode.env` (preserved across reruns once created)
 
 ## Target Deck Setup
 
@@ -47,7 +42,6 @@ On the target Steam Deck in Desktop Mode:
 5. If SteamOS prompts for trust/execute permission, allow launching once.
 6. Use `Learn Steam Input Map` if bindings need to be rebuilt.
 7. Use `STEAMDECK-MIDI-SENDER` to create/select a target preset and start sending.
-8. Use `VJ Mode` as the Non-Steam/Game Mode entry point for TouchOSC + helper tools.
 
 ## Upgrade Behavior
 

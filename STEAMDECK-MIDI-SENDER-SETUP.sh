@@ -11,7 +11,7 @@ SEND_DESKTOP="${APPLICATIONS_DIR}/steamdeck-midi-sender.desktop"
 VJ_DESKTOP="${APPLICATIONS_DIR}/steamdeck-midi-vj-mode.desktop"
 LEARN_ICON_PATH="${INSTALL_DIR}/assets/deck/learn-map-icon.png"
 SEND_ICON_PATH="${INSTALL_DIR}/assets/deck/sender-icon.png"
-VJ_ICON_PATH="${INSTALL_DIR}/assets/windows/install-wizard-icon.png"
+VJ_ICON_PATH="${INSTALL_DIR}/assets/deck/sender-icon.png"
 
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then

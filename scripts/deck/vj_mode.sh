@@ -32,7 +32,6 @@ INPUTLEAP_MODE="${INPUTLEAP_MODE:-server}"
 INPUTLEAP_FALLBACK_TO_GUI="${INPUTLEAP_FALLBACK_TO_GUI:-1}"
 SENDER_ENABLE="${SENDER_ENABLE:-1}"
 SENDER_CMD="${SENDER_CMD:-${HOME}/steam-deck-midi/scripts/deck/run_sender.sh}"
-SENDER_SELECTION="${SENDER_SELECTION:-1}"
 
 INPUTLEAP_PID=""
 SENDER_PID=""
@@ -110,8 +109,8 @@ fi
 
 if [[ "${SENDER_ENABLE}" == "1" ]]; then
   if [[ -x "${SENDER_CMD}" ]]; then
-    log "Starting sender: ${SENDER_CMD} (selection=${SENDER_SELECTION})"
-    printf '%s\n' "${SENDER_SELECTION}" | "${SENDER_CMD}" >"${SENDER_LOG}" 2>&1 &
+    log "Starting sender: ${SENDER_CMD}"
+    "${SENDER_CMD}" >"${SENDER_LOG}" 2>&1 &
     SENDER_PID="$!"
     log "Sender pid=${SENDER_PID}, log=${SENDER_LOG}"
   else

@@ -28,6 +28,20 @@ LOGGER = logging.getLogger(__name__)
 LAYER_UNKNOWN = "unknown"
 LAYER_1 = "layer_1"
 LAYER_2 = "layer_2"
+STICK_ACTIONS = frozenset(
+    {
+        "L_STICK_UP",
+        "L_STICK_DOWN",
+        "L_STICK_LEFT",
+        "L_STICK_RIGHT",
+        "R_STICK_UP",
+        "R_STICK_DOWN",
+        "R_STICK_LEFT",
+        "R_STICK_RIGHT",
+        "LEFT_STICK_CLICK_L3",
+        "RIGHT_STICK_CLICK_R3",
+    }
+)
 
 ABXY_LAYER_1_ACTIONS = {"BTN_A", "BTN_B", "BTN_X", "BTN_Y"}
 ABXY_LAYER_2_ACTIONS = {
@@ -106,6 +120,7 @@ class ActionReceiver:
         timeout_seconds: float = 2.0,
         macro_settings: MacroSettings | None = None,
         dedupe_window_seconds: float = 0.015,
+        stick_dedupe_window_seconds: float = 0.005,
         rate_limit_window_seconds: float = 1.0,
         rate_limit_max_events: int = 200,
         rate_limit_cooldown_seconds: float = 1.0,
@@ -116,6 +131,7 @@ class ActionReceiver:
         self._timeout_seconds = timeout_seconds
         self._macro_settings = macro_settings or MacroSettings()
         self._dedupe_window_seconds = dedupe_window_seconds
+        self._stick_dedupe_window_seconds = stick_dedupe_window_seconds
         self._rate_limit_window_seconds = rate_limit_window_seconds
         self._rate_limit_max_events = rate_limit_max_events
         self._rate_limit_cooldown_seconds = rate_limit_cooldown_seconds
@@ -367,10 +383,15 @@ class ActionReceiver:
 
         event_key = (event.action, event.state)
         previous = self._recent_events.get(event_key)
-        if previous is not None and (timestamp - previous) < self._dedupe_window_seconds:
+        dedupe_window_seconds = (
+            self._stick_dedupe_window_seconds
+            if event.action in STICK_ACTIONS
+            else self._dedupe_window_seconds
+        )
+        if previous is not None and (timestamp - previous) < dedupe_window_seconds:
             LOGGER.debug(
                 "dropped duplicate event inside %.1fms window: action=%s state=%s seq=%s",
-                self._dedupe_window_seconds * 1000,
+                dedupe_window_seconds * 1000,
                 event.action,
                 event.state,
                 event.seq,

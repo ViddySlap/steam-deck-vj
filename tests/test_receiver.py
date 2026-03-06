@@ -167,6 +167,45 @@ class ActionReceiverTests(unittest.TestCase):
         self.assertFalse(handled)
         self.assertEqual(self.midi.calls, [("note_on", 0, 60, 127)])
 
+    def test_stick_actions_use_shorter_dedupe_window(self) -> None:
+        receiver = ActionReceiver(
+            self.midi,
+            {
+                "BTN_A": NoteMapping(action="BTN_A", kind="note", channel=0, note=60),
+                "R_STICK_RIGHT": NoteMapping(
+                    action="R_STICK_RIGHT", kind="note", channel=0, note=61
+                ),
+            },
+            timeout_seconds=1.0,
+        )
+
+        button_duplicate_handled = receiver.handle_datagram(
+            b'{"action":"BTN_A","state":"down","seq":1}', self.addr, now=0.0
+        )
+        self.assertTrue(button_duplicate_handled)
+        button_duplicate_handled = receiver.handle_datagram(
+            b'{"action":"BTN_A","state":"down","seq":2}', self.addr, now=0.01
+        )
+        self.assertFalse(button_duplicate_handled)
+
+        stick_duplicate_handled = receiver.handle_datagram(
+            b'{"action":"R_STICK_RIGHT","state":"down","seq":3}', self.addr, now=0.1
+        )
+        self.assertTrue(stick_duplicate_handled)
+        stick_duplicate_handled = receiver.handle_datagram(
+            b'{"action":"R_STICK_RIGHT","state":"down","seq":4}', self.addr, now=0.11
+        )
+        self.assertTrue(stick_duplicate_handled)
+
+        self.assertEqual(
+            self.midi.calls,
+            [
+                ("note_on", 0, 60, 127),
+                ("note_on", 0, 61, 127),
+                ("note_on", 0, 61, 127),
+            ],
+        )
+
     def test_loop_guard_releases_active_state_when_rate_limit_trips(self) -> None:
         receiver = ActionReceiver(
             self.midi,

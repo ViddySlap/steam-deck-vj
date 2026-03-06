@@ -111,7 +111,7 @@ fi
 if [[ "${SENDER_ENABLE}" == "1" ]]; then
   if [[ -x "${SENDER_CMD}" ]]; then
     log "Starting sender: ${SENDER_CMD} (selection=${SENDER_SELECTION})"
-    printf '%s\n' "${SENDER_SELECTION}" | "${SENDER_CMD}" >"${SENDER_LOG}" 2>&1 &
+    "${SENDER_CMD}" --preset-index "${SENDER_SELECTION}" >"${SENDER_LOG}" 2>&1 &
     SENDER_PID="$!"
     log "Sender pid=${SENDER_PID}, log=${SENDER_LOG}"
   else

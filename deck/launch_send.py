@@ -27,6 +27,12 @@ def build_parser() -> argparse.ArgumentParser:
         default="config/deck_runtime_settings.example.json",
         help="path to example deck runtime settings JSON",
     )
+    parser.add_argument(
+        "--preset-index",
+        type=int,
+        default=None,
+        help="1-based preset index for non-interactive startup",
+    )
     return parser
 
 def prompt_new_preset(settings_path: str, settings):
@@ -98,10 +104,24 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     device_id = settings.device_id or "5"
-    preset, settings = prompt_for_preset(args.settings, settings, device_id)
-    if preset is None:
-        print("Sender cancelled.")
-        return 0
+    if args.preset_index is not None:
+        index = args.preset_index
+        if index < 1 or index > len(settings.presets):
+            parser.error(
+                f"--preset-index {index} is out of range; presets available: {len(settings.presets)}"
+            )
+            return 2
+        preset = settings.presets[index - 1]
+        print("")
+        print("STEAMDECK-MIDI-SENDER")
+        print(f"Bindings: {settings.bindings_path}")
+        print(f"Device ID: {device_id}")
+        print(f"Using preset index: {index}")
+    else:
+        preset, settings = prompt_for_preset(args.settings, settings, device_id)
+        if preset is None:
+            print("Sender cancelled.")
+            return 0
 
     target = f"{preset.host}:{preset.port}"
     print("")
